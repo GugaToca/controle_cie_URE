@@ -864,7 +864,7 @@ body.dark .modernTable td code {
   .grid {
     grid-template-columns: 1fr;
   }
-  
+
   .form .row {
     flex-direction: column;
   }
@@ -874,117 +874,266 @@ body.dark .modernTable td code {
   body {
     font-size: 15px;
   }
-  
+
   .wrap {
-    padding: 16px;
+    padding: 12px;
   }
-  
+
   .topbar {
-    padding: 4px 0;
+    padding: 6px 0;
   }
-  
+
+  /* Header: mascote + título em linha, botões abaixo */
   .headerFlex {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 6px 10px;
   }
-  
+
   .logoMascot {
-    height: 45px;
+    height: 44px;
+    margin: 0;
     grid-column: 1;
-    justify-self: center;
+    grid-row: 1;
+    justify-self: start;
+    align-self: center;
   }
-  
+
   .logoTitle {
-    gap: 4px;
-    font-size: 16px;
-    grid-column: 1;
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 14px;
+    justify-content: flex-start;
+    text-align: left;
+    align-self: center;
   }
-  
+
   .headerBtns {
-    grid-column: 1;
-    justify-self: center;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-  
+
+  .userDisplay {
+    font-size: 13px;
+    padding: 6px 10px;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Tabs de navegação: rolagem horizontal, sem coluna */
   .mainTabs {
-    flex-direction: column;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    margin-top: 12px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
   }
-  
+
+  .mainTabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .mainTab {
-    width: 100%;
+    flex-shrink: 0;
+    width: auto;
+    padding: 10px 16px;
+    font-size: 14px;
     justify-content: center;
+    min-height: 44px;
   }
-  
+
+  /* Tabs internas (CIE/Nome): rolagem horizontal */
   .tabs {
-    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
   }
-  
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .tab {
-    width: 100%;
-    text-align: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: 44px;
   }
-  
+
   .actions {
     flex-direction: column;
   }
-  
-  .btn {
+
+  /* Apenas botões de ação do formulário ficam largura total */
+  .actions .btn,
+  .listHeader .btn {
     width: 100%;
     justify-content: center;
   }
-  
+
+  /* Botões do header NÃO devem ser 100% */
+  .headerBtns .btn {
+    width: auto;
+  }
+
   .listHeader {
     flex-direction: column;
     align-items: flex-start;
   }
-  
-  .tableWrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+
+  /* Alvos de toque mínimos */
+  input,
+  textarea,
+  select {
+    min-height: 44px;
   }
-  
-  .modernTable {
-    min-width: 650px;
-  }
-  
+
   .cardsGrid {
     grid-template-columns: 1fr;
   }
-  
+
   .modalContent {
-    width: 95%;
-    max-height: 90vh;
-    padding: 20px;
+    width: 100%;
+    max-height: 92vh;
+    padding: 18px;
+    border-radius: var(--radius-md);
   }
-  
+
   input,
   textarea {
-    font-size: 16px;
+    font-size: 16px; /* evita zoom automático no iOS */
   }
-  
+
   .pageTitle {
-    font-size: 24px;
+    font-size: 22px;
   }
-  
+
   .sectionTitle {
-    font-size: 18px;
+    font-size: 17px;
+  }
+}
+
+/* Tabela: layout em cartões no mobile pequeno */
+@media (max-width: 640px) {
+  .tableWrap {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .modernTable {
+    min-width: unset;
+  }
+
+  .modernTable thead {
+    display: none;
+  }
+
+  .modernTable,
+  .modernTable tbody {
+    display: block;
+  }
+
+  .modernTable tbody tr {
+    display: block;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .modernTable tbody tr:hover {
+    background: var(--card);
+    transform: none;
+  }
+
+  .modernTable td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .modernTable td:last-child {
+    border-bottom: none;
+    padding-top: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .modernTable td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .modernTable td:last-child::before {
+    display: none;
+  }
+
+  /* Botões Editar/Excluir dentro do cartão */
+  .modernTable .btn {
+    width: auto;
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: 13px;
   }
 }
 
 @media (max-width: 480px) {
   .card {
-    padding: 16px;
+    padding: 14px;
   }
-  
+
   .sectionTitle {
-    font-size: 16px;
+    font-size: 15px;
   }
-  
+
   .logoMascot {
-    height: 60px;
+    height: 38px;
   }
-  
+
+  .logoTitle {
+    font-size: 13px;
+  }
+
+  /* Modal desliza da base na tela pequena */
+  .modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+
   .modalContent {
-    padding: 16px;
+    padding: 14px;
+    max-height: 95vh;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .pageTitle {
+    font-size: 19px;
   }
 }
 

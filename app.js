@@ -262,10 +262,10 @@ async function loadList(){
 
     rows += `
     <tr>
-      <td>${escapeHtml(s.nome)}</td>
-      <td><code>${escapeHtml(s.cie)}</code></td>
-      <td>${escapeHtml(s.municipio)}</td>
-      <td>${escapeHtml(s.ure)}</td>
+      <td data-label="Escola">${escapeHtml(s.nome)}</td>
+      <td data-label="CIE"><code>${escapeHtml(s.cie)}</code></td>
+      <td data-label="Município">${escapeHtml(s.municipio)}</td>
+      <td data-label="URE">${escapeHtml(s.ure)}</td>
       <td>
         <button class="btn" data-edit="${escapeHtml(s.cie)}">Editar</button>
         <button class="btn" data-del="${escapeHtml(s.cie)}">Excluir</button>
