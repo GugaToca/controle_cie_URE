@@ -183,6 +183,17 @@ onAuthStateChanged(auth, (user)=>{
     registrarUsuario(user);
     loadList();
 
+    // Aviso de novidades — exibe apenas na primeira vez de cada usuário após a atualização
+    const NOVIDADES_KEY = `novidadesAgenda_v1_${user.uid}`;
+    if(!localStorage.getItem(NOVIDADES_KEY)){
+      const modalNovidades = $("modalNovidades");
+      if(modalNovidades) modalNovidades.style.display = "flex";
+      $("btnFecharNovidades")?.addEventListener("click", ()=>{
+        modalNovidades.style.display = "none";
+        localStorage.setItem(NOVIDADES_KEY, "1");
+      });
+    }
+
   }else{
 
     if(loginScreen) loginScreen.style.display = "flex";
