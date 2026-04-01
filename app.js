@@ -12,7 +12,8 @@ import {
   getDocs,
   query,
   orderBy,
-  addDoc
+  addDoc,
+  where
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 import {
@@ -179,6 +180,7 @@ onAuthStateChanged(auth, (user)=>{
       userDisplay.textContent = "👤 " + getUserFirstName();
     }
 
+    registrarUsuario(user);
     loadList();
 
   }else{
@@ -511,8 +513,15 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     if(pageSistema) pageSistema.style.display = page === "sistema" ? "block" : "none";
     if(pageHistorico) pageHistorico.style.display = page === "historico" ? "block" : "none";
 
+    const pageAgendaEl = document.getElementById("page-agenda");
+    if(pageAgendaEl) pageAgendaEl.style.display = page === "agenda" ? "block" : "none";
+
     if(page === "historico"){
       loadHistoricoCards();
+    }
+
+    if(page === "agenda"){
+      loadAgendaSelector().then(() => loadAgendaPage());
     }
 
   });
@@ -718,3 +727,551 @@ modalHistorico?.addEventListener("click",(e)=>{
     modalHistorico.style.display = "none";
   }
 });
+
+/* ================= AGENDA ================= */
+
+// --- Estado ---
+let agendaViewUid = null;
+let agendaMes = new Date().getMonth();
+let agendaAno = new Date().getFullYear();
+let agendaView = "calendario";
+let currentEventoEditId = null;
+let agendaEventos = [];
+let agendaEscolasCached = [];
+
+// --- Refs DOM ---
+const agendaSelector       = $("agendaSelector");
+const btnCompartilharAgenda= $("btnCompartilharAgenda");
+const btnNovoEvento        = $("btnNovoEvento");
+const btnViewCalendario    = $("btnViewCalendario");
+const btnViewLista         = $("btnViewLista");
+const calendarioGrid       = $("calendarioGrid");
+const calendarioMesAno     = $("calendarioMesAno");
+const btnMesAnterior       = $("btnMesAnterior");
+const btnProximoMes        = $("btnProximoMes");
+const agendaCalendario     = $("agendaCalendario");
+const agendaListaEl        = $("agendaLista");
+
+const modalEvento          = $("modalEvento");
+const formEvento           = $("formEvento");
+const eventoTitulo         = $("eventoTitulo");
+const eventoDataHora       = $("eventoDataHora");
+const eventoEscola         = $("eventoEscola");
+const eventoDescricao      = $("eventoDescricao");
+const eventoFormMsg        = $("eventoFormMsg");
+const btnFecharModalEvento = $("btnFecharModalEvento");
+const btnCancelarEvento    = $("btnCancelarEvento");
+
+const modalEventoDetalhe   = $("modalEventoDetalhe");
+const detalheEventoTitle   = $("detalheEventoTitle");
+const detalheEventoBody    = $("detalheEventoBody");
+const detalheEventoAcoes   = $("detalheEventoAcoes");
+const detalheComentarios   = $("detalheComentarios");
+const novoComentarioTexto  = $("novoComentarioTexto");
+const btnSalvarComentario  = $("btnSalvarComentario");
+const btnFecharDetalhe     = $("btnFecharDetalhe");
+
+const modalCompartilhar        = $("modalCompartilhar");
+const listaUsuariosCompartilhar= $("listaUsuariosCompartilhar");
+const btnConfirmarCompartilhar = $("btnConfirmarCompartilhar");
+const btnFecharCompartilhar    = $("btnFecharCompartilhar");
+
+// --- Helpers ---
+
+function isDono(){
+  return agendaViewUid === currentUid();
+}
+
+function padZ(n){ return String(n).padStart(2,"0"); }
+
+function dtLocalValue(ms){
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${padZ(d.getMonth()+1)}-${padZ(d.getDate())}T${padZ(d.getHours())}:${padZ(d.getMinutes())}`;
+}
+
+// --- Registrar usuário ---
+
+async function registrarUsuario(user){
+  try{
+    await setDoc(doc(db,"usuarios",user.uid),{
+      uid: user.uid,
+      email: user.email,
+      nome: getUserFirstName()
+    },{ merge:true });
+  }catch(e){ console.error("registrarUsuario",e); }
+}
+
+// --- Carregar usuários ---
+
+async function loadUsuarios(){
+  const snap = await getDocs(collection(db,"usuarios"));
+  const lista = [];
+  snap.forEach(d => lista.push(d.data()));
+  return lista;
+}
+
+// --- Seletor de agenda ---
+
+async function loadAgendaSelector(){
+  if(!agendaSelector) return;
+  const meuUid = currentUid();
+  agendaSelector.innerHTML = `<option value="${meuUid}">📅 Minha Agenda</option>`;
+
+  try{
+    const q = query(collection(db,"agenda"), where("compartilhadoCom","array-contains",meuUid));
+    const snap = await getDocs(q);
+    snap.forEach(d => {
+      const donoUid = d.id;
+      if(donoUid === meuUid) return;
+      const data = d.data();
+      const nome = data.nomeProprietario || data.emailProprietario || donoUid;
+      agendaSelector.innerHTML += `<option value="${escapeHtml(donoUid)}">👤 ${escapeHtml(nome)}</option>`;
+    });
+  }catch(e){ console.error("loadAgendaSelector",e); }
+}
+
+// --- Carregar página da agenda ---
+
+async function loadAgendaPage(){
+  agendaViewUid = agendaSelector?.value || currentUid();
+
+  // Escolas para o select do formulário
+  try{
+    const snap = await getDocs(query(collection(db,"escolas"), orderBy("nomeLower")));
+    agendaEscolasCached = [];
+    snap.forEach(d => agendaEscolasCached.push(d.data()));
+    if(eventoEscola){
+      eventoEscola.innerHTML = '<option value="">— Nenhuma —</option>';
+      agendaEscolasCached.forEach(s => {
+        eventoEscola.innerHTML += `<option value="${escapeHtml(s.cie)}">${escapeHtml(s.nome)} (${escapeHtml(s.cie)})</option>`;
+      });
+    }
+  }catch(e){ console.error("loadEscolas",e); }
+
+  // Mostrar/ocultar botão de novo evento
+  if(btnNovoEvento) btnNovoEvento.style.display = isDono() ? "inline-flex" : "none";
+
+  await loadEventos();
+}
+
+async function loadEventos(){
+  agendaViewUid = agendaSelector?.value || currentUid();
+  try{
+    const q = query(collection(db,"agenda",agendaViewUid,"eventos"), orderBy("dataHoraMs"));
+    const snap = await getDocs(q);
+    agendaEventos = [];
+    snap.forEach(d => agendaEventos.push({ id:d.id, ...d.data() }));
+  }catch(e){
+    agendaEventos = [];
+  }
+
+  if(agendaView === "calendario"){
+    renderCalendario(agendaEventos, agendaMes, agendaAno);
+  }else{
+    renderListaEventos(agendaEventos);
+  }
+}
+
+// --- Calendário ---
+
+function renderCalendario(eventos, mes, ano){
+  if(!calendarioGrid || !calendarioMesAno) return;
+
+  const nomeMeses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                     "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  calendarioMesAno.textContent = `${nomeMeses[mes]} ${ano}`;
+
+  const hoje = new Date();
+  const primeiroDia = new Date(ano, mes, 1).getDay();
+  const ultimoDia   = new Date(ano, mes + 1, 0).getDate();
+
+  // Mapa dia → eventos
+  const eventosPorDia = {};
+  eventos.forEach(ev => {
+    if(!ev.dataHoraMs) return;
+    const d = new Date(ev.dataHoraMs);
+    if(d.getMonth() === mes && d.getFullYear() === ano){
+      const dia = d.getDate();
+      if(!eventosPorDia[dia]) eventosPorDia[dia] = [];
+      eventosPorDia[dia].push(ev);
+    }
+  });
+
+  let html = "";
+  ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].forEach(d => {
+    html += `<div class="diaHeader">${d}</div>`;
+  });
+
+  for(let i = 0; i < primeiroDia; i++){
+    html += `<div class="diaCell vazio"></div>`;
+  }
+
+  for(let dia = 1; dia <= ultimoDia; dia++){
+    const isHoje = hoje.getDate() === dia && hoje.getMonth() === mes && hoje.getFullYear() === ano;
+    const evsDia = eventosPorDia[dia] || [];
+    const temEvento = evsDia.length > 0;
+
+    let chips = "";
+    evsDia.slice(0,2).forEach(ev => {
+      chips += `<div class="eventoChip" data-id="${escapeHtml(ev.id)}">${escapeHtml(ev.titulo)}</div>`;
+    });
+    if(evsDia.length > 2){
+      chips += `<div class="eventoChipMais">+${evsDia.length - 2} mais</div>`;
+    }
+
+    html += `
+      <div class="diaCell${isHoje ? " hoje" : ""}${temEvento ? " temEvento" : ""}" data-dia="${dia}">
+        <span class="diaNumer">${dia}</span>
+        ${chips}
+      </div>`;
+  }
+
+  calendarioGrid.innerHTML = html;
+
+  // Clique nos chips
+  calendarioGrid.querySelectorAll(".eventoChip").forEach(chip => {
+    chip.addEventListener("click", e => {
+      e.stopPropagation();
+      openEventoDetalhe(chip.dataset.id);
+    });
+  });
+
+  // Clique no dia para criar evento (somente dono)
+  if(isDono()){
+    calendarioGrid.querySelectorAll(".diaCell:not(.vazio)").forEach(cell => {
+      cell.addEventListener("click", () => {
+        const dia = parseInt(cell.dataset.dia);
+        abrirModalNovoEvento(new Date(ano, mes, dia, 9, 0));
+      });
+    });
+  }
+}
+
+// --- Lista ---
+
+function renderListaEventos(eventos){
+  if(!agendaListaEl) return;
+
+  if(eventos.length === 0){
+    agendaListaEl.innerHTML = `<div class="msg err" style="display:block">Nenhum evento cadastrado.</div>`;
+    return;
+  }
+
+  const sorted = [...eventos].sort((a,b) => (a.dataHoraMs||0) - (b.dataHoraMs||0));
+  let html = "";
+
+  sorted.forEach(ev => {
+    const dt = ev.dataHoraMs
+      ? new Date(ev.dataHoraMs).toLocaleString("pt-BR",{ dateStyle:"short", timeStyle:"short" })
+      : "—";
+    const escola = ev.cie ? agendaEscolasCached.find(s => s.cie === ev.cie) : null;
+    const escolaNome = escola ? escola.nome : (ev.cie || "");
+
+    html += `
+      <div class="listaEvento" data-id="${escapeHtml(ev.id)}" role="listitem" tabindex="0">
+        <div class="listaEventoData">${dt}</div>
+        <div class="listaEventoInfo">
+          <strong>${escapeHtml(ev.titulo)}</strong>
+          ${escolaNome ? `<span class="listaEventoEscola">🏫 ${escapeHtml(escolaNome)}</span>` : ""}
+          ${ev.descricao ? `<span class="listaEventoDesc">${escapeHtml(ev.descricao)}</span>` : ""}
+        </div>
+      </div>`;
+  });
+
+  agendaListaEl.innerHTML = html;
+
+  agendaListaEl.querySelectorAll(".listaEvento").forEach(item => {
+    item.addEventListener("click", () => openEventoDetalhe(item.dataset.id));
+    item.addEventListener("keypress", e => { if(e.key === "Enter") openEventoDetalhe(item.dataset.id); });
+  });
+}
+
+// --- Modal criar/editar evento ---
+
+function abrirModalNovoEvento(dataInicial){
+  currentEventoEditId = null;
+  if(formEvento) formEvento.reset();
+  const titleEl = $("modalEventoTitle");
+  if(titleEl) titleEl.textContent = "Novo Evento";
+  if(dataInicial && eventoDataHora){
+    eventoDataHora.value = dtLocalValue(dataInicial.getTime());
+  }
+  setMsg(eventoFormMsg,"","");
+  if(modalEvento) modalEvento.style.display = "flex";
+}
+
+function abrirModalEditarEvento(ev){
+  currentEventoEditId = ev.id;
+  if(eventoTitulo)   eventoTitulo.value    = ev.titulo    || "";
+  if(eventoDescricao) eventoDescricao.value = ev.descricao || "";
+  if(eventoEscola)   eventoEscola.value    = ev.cie       || "";
+  if(eventoDataHora && ev.dataHoraMs){
+    eventoDataHora.value = dtLocalValue(ev.dataHoraMs);
+  }
+  const titleEl = $("modalEventoTitle");
+  if(titleEl) titleEl.textContent = "Editar Evento";
+  setMsg(eventoFormMsg,"","");
+  if(modalEventoDetalhe) modalEventoDetalhe.style.display = "none";
+  if(modalEvento)        modalEvento.style.display = "flex";
+}
+
+formEvento?.addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const titulo     = eventoTitulo?.value.trim()   || "";
+  const dataHoraVal= eventoDataHora?.value         || "";
+  const cie        = eventoEscola?.value           || "";
+  const descricao  = eventoDescricao?.value.trim() || "";
+
+  if(!titulo)      return setMsg(eventoFormMsg,"Informe o título","err");
+  if(!dataHoraVal) return setMsg(eventoFormMsg,"Informe a data e hora","err");
+
+  const dataHoraMs = new Date(dataHoraVal).getTime();
+  const dados = { titulo, dataHoraMs, cie, descricao, criadoPor: currentUid(), criadoEm: Date.now() };
+
+  try{
+    if(currentEventoEditId){
+      await setDoc(doc(db,"agenda",currentUid(),"eventos",currentEventoEditId), dados, { merge:true });
+    }else{
+      await addDoc(collection(db,"agenda",currentUid(),"eventos"), dados);
+    }
+    if(modalEvento) modalEvento.style.display = "none";
+    await loadEventos();
+  }catch(err){
+    console.error(err);
+    setMsg(eventoFormMsg,"Erro ao salvar evento","err");
+  }
+});
+
+// --- Modal detalhe do evento ---
+
+async function openEventoDetalhe(eventoId){
+  const ev = agendaEventos.find(e => e.id === eventoId);
+  if(!ev) return;
+
+  if(detalheEventoTitle) detalheEventoTitle.textContent = ev.titulo;
+
+  const dt = ev.dataHoraMs
+    ? new Date(ev.dataHoraMs).toLocaleString("pt-BR",{ dateStyle:"full", timeStyle:"short" })
+    : "—";
+  const escola = ev.cie ? agendaEscolasCached.find(s => s.cie === ev.cie) : null;
+  const escolaNome = escola ? escola.nome : (ev.cie || "");
+
+  if(detalheEventoBody){
+    detalheEventoBody.innerHTML = `
+      <div class="detalheItem"><span class="detalheLabel">📆 Data/Hora:</span>${escapeHtml(dt)}</div>
+      ${escolaNome ? `<div class="detalheItem"><span class="detalheLabel">🏫 Escola:</span>${escapeHtml(escolaNome)}</div>` : ""}
+      ${ev.descricao ? `<div class="detalheItem"><span class="detalheLabel">📝 Descrição:</span>${escapeHtml(ev.descricao)}</div>` : ""}`;
+  }
+
+  if(detalheEventoAcoes){
+    if(isDono()){
+      detalheEventoAcoes.innerHTML = `
+        <button class="btn primary" id="btnEditarEvento">✏️ Editar</button>
+        <button class="btn" id="btnExcluirEvento" style="background:var(--error);color:white">🗑️ Excluir</button>`;
+
+      $("btnEditarEvento")?.addEventListener("click", () => abrirModalEditarEvento(ev));
+      $("btnExcluirEvento")?.addEventListener("click", async () => {
+        if(!confirm("Excluir este evento?")) return;
+        await deleteDoc(doc(db,"agenda",currentUid(),"eventos",eventoId));
+        if(modalEventoDetalhe) modalEventoDetalhe.style.display = "none";
+        await loadEventos();
+      });
+    }else{
+      detalheEventoAcoes.innerHTML = "";
+    }
+  }
+
+  await loadComentarios(eventoId);
+
+  if(novoComentarioTexto) novoComentarioTexto.value = "";
+
+  if(btnSalvarComentario){
+    btnSalvarComentario.onclick = async () => {
+      const texto = novoComentarioTexto?.value.trim();
+      if(!texto) return;
+      await salvarComentario(eventoId, texto);
+      if(novoComentarioTexto) novoComentarioTexto.value = "";
+      await loadComentarios(eventoId);
+    };
+  }
+
+  if(modalEventoDetalhe) modalEventoDetalhe.style.display = "flex";
+}
+
+// --- Comentários ---
+
+async function loadComentarios(eventoId){
+  if(!detalheComentarios) return;
+  try{
+    const colRef = collection(db,"agenda",agendaViewUid,"eventos",eventoId,"comentarios");
+    const snap   = await getDocs(colRef);
+    const items  = [];
+    snap.forEach(d => items.push({ id:d.id, ...d.data() }));
+    items.sort((a,b) => (a.criadoEm||0) - (b.criadoEm||0));
+
+    if(items.length === 0){
+      detalheComentarios.innerHTML = `<div class="msg err" style="display:block;margin-bottom:12px">Sem comentários ainda.</div>`;
+      return;
+    }
+
+    let html = "";
+    items.forEach(c => {
+      const dt = c.criadoEm
+        ? new Date(c.criadoEm).toLocaleString("pt-BR",{ dateStyle:"short", timeStyle:"short" })
+        : "";
+      const isMeu = c.autorUid === currentUid();
+      html += `
+        <div class="commentItem${isMeu ? " meu" : ""}">
+          <div class="commentHeader">
+            <strong>${escapeHtml(c.autorNome || c.autorUid)}</strong>
+            <span class="commentDate">${dt}</span>
+            ${isMeu
+              ? `<button class="btnDeleteComment" data-comment-id="${escapeHtml(c.id)}" data-evento-id="${escapeHtml(eventoId)}">🗑️</button>`
+              : ""}
+          </div>
+          <div class="commentBody">${escapeHtml(c.texto)}</div>
+        </div>`;
+    });
+
+    detalheComentarios.innerHTML = html;
+
+    detalheComentarios.querySelectorAll(".btnDeleteComment").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        e.stopPropagation();
+        if(!confirm("Excluir comentário?")) return;
+        await deleteDoc(doc(db,"agenda",agendaViewUid,"eventos",btn.dataset.eventoId,"comentarios",btn.dataset.commentId));
+        await loadComentarios(btn.dataset.eventoId);
+      });
+    });
+  }catch(err){
+    console.error(err);
+    detalheComentarios.innerHTML = `<div class="msg err" style="display:block">Erro ao carregar comentários.</div>`;
+  }
+}
+
+async function salvarComentario(eventoId, texto){
+  await addDoc(collection(db,"agenda",agendaViewUid,"eventos",eventoId,"comentarios"),{
+    texto,
+    autorUid: currentUid(),
+    autorNome: getUserFirstName(),
+    criadoEm: Date.now()
+  });
+}
+
+// --- Modal compartilhamento ---
+
+async function abrirModalCompartilhar(){
+  if(!listaUsuariosCompartilhar) return;
+  listaUsuariosCompartilhar.innerHTML = "<p>Carregando...</p>";
+  if(modalCompartilhar) modalCompartilhar.style.display = "flex";
+
+  const meuUid = currentUid();
+
+  let compartilhadoCom = [];
+  try{
+    const agendaDoc = await getDoc(doc(db,"agenda",meuUid));
+    if(agendaDoc.exists()) compartilhadoCom = agendaDoc.data().compartilhadoCom || [];
+  }catch(e){}
+
+  const usuarios = await loadUsuarios();
+  const outros   = usuarios.filter(u => u.uid !== meuUid);
+
+  if(outros.length === 0){
+    listaUsuariosCompartilhar.innerHTML = `<p class="hint">Nenhum outro usuário cadastrado no sistema.</p>`;
+    return;
+  }
+
+  let html = "";
+  outros.forEach(u => {
+    const checked = compartilhadoCom.includes(u.uid) ? "checked" : "";
+    html += `
+      <label class="usuarioShareItem" role="listitem">
+        <input type="checkbox" value="${escapeHtml(u.uid)}" ${checked}>
+        <span>${escapeHtml(u.nome)} <small>${escapeHtml(u.email)}</small></span>
+      </label>`;
+  });
+  listaUsuariosCompartilhar.innerHTML = html;
+}
+
+btnConfirmarCompartilhar?.addEventListener("click", async () => {
+  const meuUid    = currentUid();
+  const checkboxes= listaUsuariosCompartilhar?.querySelectorAll("input[type=checkbox]") || [];
+  const selecionados = [];
+  checkboxes.forEach(cb => { if(cb.checked) selecionados.push(cb.value); });
+
+  try{
+    await setDoc(doc(db,"agenda",meuUid),{
+      compartilhadoCom: selecionados,
+      nomeProprietario: getUserFirstName(),
+      emailProprietario: auth.currentUser?.email || ""
+    },{ merge:true });
+
+    if(modalCompartilhar) modalCompartilhar.style.display = "none";
+    await loadAgendaSelector();
+  }catch(err){
+    console.error(err);
+    alert("Erro ao salvar compartilhamento");
+  }
+});
+
+// --- View toggle ---
+
+btnViewCalendario?.addEventListener("click", () => {
+  agendaView = "calendario";
+  btnViewCalendario.classList.add("active");
+  btnViewLista?.classList.remove("active");
+  if(agendaCalendario) agendaCalendario.style.display = "block";
+  if(agendaListaEl)    agendaListaEl.style.display    = "none";
+  renderCalendario(agendaEventos, agendaMes, agendaAno);
+});
+
+btnViewLista?.addEventListener("click", () => {
+  agendaView = "lista";
+  btnViewLista.classList.add("active");
+  btnViewCalendario?.classList.remove("active");
+  if(agendaCalendario) agendaCalendario.style.display = "none";
+  if(agendaListaEl)    agendaListaEl.style.display    = "block";
+  renderListaEventos(agendaEventos);
+});
+
+// --- Navegação de mês ---
+
+btnMesAnterior?.addEventListener("click", () => {
+  agendaMes--;
+  if(agendaMes < 0){ agendaMes = 11; agendaAno--; }
+  renderCalendario(agendaEventos, agendaMes, agendaAno);
+});
+
+btnProximoMes?.addEventListener("click", () => {
+  agendaMes++;
+  if(agendaMes > 11){ agendaMes = 0; agendaAno++; }
+  renderCalendario(agendaEventos, agendaMes, agendaAno);
+});
+
+// --- Seletor de agenda ---
+
+agendaSelector?.addEventListener("change", () => {
+  agendaViewUid = agendaSelector.value;
+  if(btnNovoEvento) btnNovoEvento.style.display = isDono() ? "inline-flex" : "none";
+  loadEventos();
+});
+
+// --- Botões globais ---
+
+btnNovoEvento?.addEventListener("click", () => {
+  if(!isDono()) return;
+  abrirModalNovoEvento(new Date());
+});
+
+btnCompartilharAgenda?.addEventListener("click", abrirModalCompartilhar);
+
+btnFecharModalEvento?.addEventListener("click", () => { if(modalEvento) modalEvento.style.display = "none"; });
+btnCancelarEvento?.addEventListener("click",    () => { if(modalEvento) modalEvento.style.display = "none"; });
+modalEvento?.addEventListener("click", e => { if(e.target === modalEvento) modalEvento.style.display = "none"; });
+
+btnFecharDetalhe?.addEventListener("click", () => { if(modalEventoDetalhe) modalEventoDetalhe.style.display = "none"; });
+modalEventoDetalhe?.addEventListener("click", e => { if(e.target === modalEventoDetalhe) modalEventoDetalhe.style.display = "none"; });
+
+btnFecharCompartilhar?.addEventListener("click", () => { if(modalCompartilhar) modalCompartilhar.style.display = "none"; });
+modalCompartilhar?.addEventListener("click", e => { if(e.target === modalCompartilhar) modalCompartilhar.style.display = "none"; });

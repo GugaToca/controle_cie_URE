@@ -1181,3 +1181,396 @@ body.dark .modernTable td code {
   display: flex;
   align-items: center;
 }
+
+/* ================= AGENDA ================= */
+
+.agendaControls {
+  margin-top: 20px;
+}
+
+.agendaControlsTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.agendaSelectorWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.agendaSelectorWrap .labelText {
+  white-space: nowrap;
+}
+
+.agendaSelectorWrap select {
+  flex: 1;
+  max-width: 280px;
+}
+
+.agendaViewToggle {
+  display: flex;
+  gap: 8px;
+}
+
+/* Calendário */
+
+.agendaCalendarioWrap {
+  margin-top: 20px;
+}
+
+.calendarioNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.calendarioMesAno {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 200px;
+  text-align: center;
+}
+
+.calendarioGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.diaHeader {
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  padding: 6px 4px;
+  letter-spacing: 0.05em;
+}
+
+.diaCell {
+  min-height: 80px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: var(--transition);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.diaCell:hover:not(.vazio) {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.diaCell.vazio {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.diaCell.hoje {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.diaCell.hoje .diaNumer {
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+}
+
+.diaNumer {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+}
+
+.eventoChip {
+  background: var(--primary);
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.eventoChip:hover {
+  background: var(--primary-hover);
+  transform: scale(1.02);
+}
+
+.eventoChipMais {
+  font-size: 10px;
+  color: var(--text-secondary);
+  padding: 1px 4px;
+}
+
+/* Lista de eventos */
+
+.agendaListaWrap {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.listaEvento {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  cursor: pointer;
+  transition: var(--transition-slow);
+  box-shadow: var(--shadow-sm);
+}
+
+.listaEvento:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+  transform: translateX(4px);
+}
+
+.listaEventoData {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+  min-width: 110px;
+  padding-top: 2px;
+}
+
+.listaEventoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.listaEventoInfo strong {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.listaEventoEscola {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.listaEventoDesc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Detalhe do evento */
+
+.detalheItem {
+  margin-bottom: 12px;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.detalheLabel {
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+/* Comentários */
+
+.comentariosLista {
+  margin-bottom: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.commentItem {
+  background: var(--border-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.commentItem.meu {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.commentHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.commentHeader strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.commentDate {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.btnDeleteComment {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--error);
+  padding: 2px 4px;
+  transition: var(--transition);
+}
+
+.btnDeleteComment:hover {
+  transform: scale(1.2);
+}
+
+.commentBody {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* Modal compartilhamento */
+
+.usuarioShareItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.usuarioShareItem:hover {
+  background: var(--border-soft);
+  border-color: var(--primary);
+}
+
+.usuarioShareItem input[type=checkbox] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.usuarioShareItem span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.usuarioShareItem small {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* Agenda Responsivo */
+
+@media (max-width: 768px) {
+  .agendaControlsTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .agendaSelectorWrap select {
+    max-width: 100%;
+  }
+
+  .calendarioGrid {
+    padding: 6px;
+    gap: 2px;
+  }
+
+  .diaCell {
+    min-height: 52px;
+    padding: 3px;
+  }
+
+  .eventoChip {
+    font-size: 9px;
+    padding: 1px 3px;
+  }
+
+  .listaEvento {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .listaEventoData {
+    min-width: unset;
+  }
+}
+
+@media (max-width: 480px) {
+  .diaHeader {
+    font-size: 10px;
+    padding: 4px 2px;
+  }
+
+  .diaCell {
+    min-height: 36px;
+    padding: 2px;
+  }
+
+  .diaNumer {
+    font-size: 11px;
+    width: 18px;
+    height: 18px;
+  }
+
+  /* No mobile muito pequeno, oculta chips e mostra só ponto */
+  .eventoChip,
+  .eventoChipMais {
+    display: none;
+  }
+
+  .diaCell.temEvento::after {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    margin: 2px auto 0;
+  }
+}

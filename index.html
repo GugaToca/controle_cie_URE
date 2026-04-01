@@ -75,6 +75,11 @@
 <span>Histórico de Atendimento</span>
 </button>
 
+<button class="mainTab" data-page="agenda" role="tab" aria-selected="false" aria-controls="page-agenda">
+<span class="tabIcon">📅</span>
+<span>Agenda</span>
+</button>
+
 </nav>
 
 <!-- PÁGINA SISTEMA -->
@@ -292,6 +297,170 @@ Histórico de Atendimento
 </div>
 
 </div>
+
+</div>
+
+<!-- PÁGINA AGENDA -->
+
+<div id="page-agenda" style="display:none" role="tabpanel" aria-labelledby="agenda-tab">
+
+  <div class="wrap">
+
+    <h2 class="pageTitle">
+      <span class="titleIcon">📅</span>
+      Agenda
+    </h2>
+
+    <!-- Barra de controles -->
+    <div class="agendaControls card cardElevated">
+
+      <div class="agendaControlsTop">
+
+        <div class="agendaSelectorWrap">
+          <label class="labelText" for="agendaSelector">Visualizando:</label>
+          <select id="agendaSelector" aria-label="Selecionar agenda"></select>
+        </div>
+
+        <button id="btnCompartilharAgenda" class="btn btnSecondary">🔗 Compartilhar minha agenda</button>
+        <button id="btnNovoEvento" class="btn primary">➕ Novo Evento</button>
+
+      </div>
+
+      <div class="agendaViewToggle">
+        <button class="tab active" id="btnViewCalendario" data-view="calendario">📅 Calendário</button>
+        <button class="tab" id="btnViewLista" data-view="lista">📋 Lista</button>
+      </div>
+
+    </div>
+
+    <!-- Calendário -->
+    <div id="agendaCalendario" class="agendaCalendarioWrap">
+
+      <div class="calendarioNav">
+        <button id="btnMesAnterior" class="btn btnSecondary" aria-label="Mês anterior">‹</button>
+        <span id="calendarioMesAno" class="calendarioMesAno"></span>
+        <button id="btnProximoMes" class="btn btnSecondary" aria-label="Próximo mês">›</button>
+      </div>
+
+      <div class="calendarioGrid" id="calendarioGrid" role="grid" aria-label="Calendário de eventos"></div>
+
+    </div>
+
+    <!-- Lista -->
+    <div id="agendaLista" style="display:none" class="agendaListaWrap" role="list"></div>
+
+  </div>
+
+</div>
+
+<!-- MODAL NOVO / EDITAR EVENTO -->
+
+<div id="modalEvento" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEventoTitle">
+
+  <div class="modalContent">
+
+    <div class="modalHeader">
+      <h3 id="modalEventoTitle" class="modalTitle">Novo Evento</h3>
+      <button id="btnFecharModalEvento" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="formEvento" class="form" novalidate>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">TÉCNICO *</span>
+          <input id="eventoTitulo" type="text" placeholder="Título do evento" required aria-required="true">
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Data e Hora *</span>
+          <input id="eventoDataHora" type="datetime-local" required aria-required="true">
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Escola vinculada</span>
+          <select id="eventoEscola" aria-label="Escola vinculada ao evento">
+            <option value="">— Nenhuma —</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Descrição / Observação</span>
+          <textarea id="eventoDescricao" placeholder="Descreva o evento..."></textarea>
+        </label>
+      </div>
+
+      <div id="eventoFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Salvar</button>
+        <button type="button" id="btnCancelarEvento" class="btn btnSecondary">Cancelar</button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<!-- MODAL DETALHE DO EVENTO -->
+
+<div id="modalEventoDetalhe" class="modal" role="dialog" aria-modal="true" aria-labelledby="detalheEventoTitle">
+
+  <div class="modalContent">
+
+    <div class="modalHeader">
+      <h3 id="detalheEventoTitle" class="modalTitle"></h3>
+      <button id="btnFecharDetalhe" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <div id="detalheEventoBody"></div>
+
+    <div id="detalheEventoAcoes" class="actions" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"></div>
+
+    <div class="modalForm">
+
+      <h4 class="sectionSubtitle" style="margin-bottom:12px">💬 Comentários</h4>
+
+      <div id="detalheComentarios" class="comentariosLista"></div>
+
+      <label for="novoComentarioTexto" class="visuallyHidden">Novo comentário</label>
+      <textarea id="novoComentarioTexto" placeholder="Adicione um comentário..." aria-label="Novo comentário"></textarea>
+
+      <button id="btnSalvarComentario" class="btn primary btnLarge btnBlock" style="margin-top:10px">💬 Comentar</button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- MODAL COMPARTILHAR AGENDA -->
+
+<div id="modalCompartilhar" class="modal" role="dialog" aria-modal="true" aria-labelledby="compartilharTitle">
+
+  <div class="modalContent">
+
+    <div class="modalHeader">
+      <h3 id="compartilharTitle" class="modalTitle">🔗 Compartilhar Agenda</h3>
+      <button id="btnFecharCompartilhar" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <p class="hint" style="margin-bottom:16px">Selecione os usuários que poderão visualizar e comentar na sua agenda:</p>
+
+    <div id="listaUsuariosCompartilhar" role="list"></div>
+
+    <div class="actions" style="margin-top:20px">
+      <button id="btnConfirmarCompartilhar" class="btn primary btnLarge">✔ Confirmar</button>
+    </div>
+
+  </div>
 
 </div>
 
