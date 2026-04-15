@@ -7,13 +7,20 @@
 <meta name="theme-color" content="#1d4ed8"/>
 <title>URE SJR Preto • Escolas x CIE</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="URE SJR Preto">
+<link rel="apple-touch-icon" href="masct_ure.png">
+
 <link rel="stylesheet" href="styles.css"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 
 </head>
 <body>
 
-<!-- LOGIN SCREEN -->
+<!-- LOGIN -->
 <div id="loginScreen" class="loginContainer">
   <form id="loginForm" class="card loginCard" autocomplete="on">
     <div class="loginHeader">
@@ -78,6 +85,11 @@
 <button class="mainTab" data-page="agenda" role="tab" aria-selected="false" aria-controls="page-agenda">
 <span class="tabIcon">📅</span>
 <span>Agenda</span>
+</button>
+
+<button class="mainTab" data-page="cameras" role="tab" aria-selected="false" aria-controls="page-cameras">
+<span class="tabIcon">📹</span>
+<span>Câmeras</span>
 </button>
 
 </nav>
@@ -441,6 +453,121 @@ Histórico de Atendimento
 
 </div>
 
+<!-- PÁGINA CÂMERAS -->
+
+<div id="page-cameras" style="display:none" role="tabpanel" aria-labelledby="cameras-tab">
+
+  <div class="wrap">
+
+    <h2 class="pageTitle">
+      <span class="titleIcon">📹</span>
+      Câmeras — DVRs das Escolas
+    </h2>
+
+    <div class="grid">
+
+      <!-- Formulário de cadastro -->
+      <section class="card cardElevated">
+        <h3 class="sectionTitle">
+          <span class="titleIcon">➕</span>
+          Cadastrar DVR
+        </h3>
+
+        <form id="cameraForm" class="form" novalidate>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">Escola *</span>
+              <select id="cameraEscola" required aria-required="true">
+                <option value="">— Selecione uma escola —</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">IP do DVR *</span>
+              <input id="cameraIp" type="text" placeholder="Ex: 192.168.1.100" required aria-required="true">
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">Porta</span>
+              <input id="cameraPorta" type="text" placeholder="Ex: 8080" value="8080">
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">Usuário</span>
+              <input id="cameraUsuario" type="text" placeholder="Ex: admin">
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">Senha</span>
+              <input id="cameraSenha" type="password" placeholder="Senha de acesso">
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">Observações</span>
+              <textarea id="cameraObs" placeholder="Modelo do DVR, localização, etc."></textarea>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn primary btnLarge">💾 Salvar</button>
+            <button type="button" id="btnLimparCamera" class="btn btnSecondary">🗑️ Limpar</button>
+          </div>
+
+          <div id="cameraFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+        </form>
+      </section>
+
+      <!-- Lista de câmeras -->
+      <section class="card cardElevated full">
+        <div class="listHeader">
+          <div class="listHeaderLeft">
+            <h3 class="sectionTitle">
+              <span class="titleIcon">📹</span>
+              DVRs Cadastrados
+            </h3>
+            <p id="cameraCount" class="schoolCount"></p>
+          </div>
+          <button id="btnReloadCameras" class="btn btnSecondary" aria-label="Recarregar lista">
+            <span class="btnIcon">🔄</span>
+            <span>Recarregar</span>
+          </button>
+        </div>
+
+        <div class="tableWrap">
+          <table class="modernTable" id="tabelaCameras">
+            <thead>
+              <tr>
+                <th scope="col">Escola</th>
+                <th scope="col">IP</th>
+                <th scope="col">Porta</th>
+                <th scope="col">Usuário</th>
+                <th scope="col">Senha</th>
+                <th scope="col">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCameras"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+</div>
+
 <!-- MODAL NOVIDADES -->
 
 <div id="modalNovidades" class="modal" role="dialog" aria-modal="true" aria-labelledby="novidadesTitle">
@@ -494,6 +621,13 @@ Histórico de Atendimento
 </div>
 
 <script type="module" src="app.js"></script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .catch(err => console.warn('SW:', err));
+  }
+</script>
 
 </div>
 

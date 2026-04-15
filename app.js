@@ -3,7 +3,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   doc,
   setDoc,
   getDoc,
@@ -33,7 +35,11 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+
 const auth = getAuth(app);
 
 /* ================= DOM ================= */
@@ -527,12 +533,19 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageAgendaEl = document.getElementById("page-agenda");
     if(pageAgendaEl) pageAgendaEl.style.display = page === "agenda" ? "block" : "none";
 
+    const pageCamerasEl = document.getElementById("page-cameras");
+    if(pageCamerasEl) pageCamerasEl.style.display = page === "cameras" ? "block" : "none";
+
     if(page === "historico"){
       loadHistoricoCards();
     }
 
     if(page === "agenda"){
       loadAgendaSelector().then(() => loadAgendaPage());
+    }
+
+    if(page === "cameras"){
+      loadCamerasPage();
     }
 
   });
@@ -1286,3 +1299,186 @@ modalEventoDetalhe?.addEventListener("click", e => { if(e.target === modalEvento
 
 btnFecharCompartilhar?.addEventListener("click", () => { if(modalCompartilhar) modalCompartilhar.style.display = "none"; });
 modalCompartilhar?.addEventListener("click", e => { if(e.target === modalCompartilhar) modalCompartilhar.style.display = "none"; });
+
+/* ================= CÂMERAS ================= */
+
+const cameraForm        = $("cameraForm");
+const cameraEscola      = $("cameraEscola");
+const cameraIp          = $("cameraIp");
+const cameraPorta       = $("cameraPorta");
+const cameraUsuario     = $("cameraUsuario");
+const cameraSenha       = $("cameraSenha");
+const cameraObs         = $("cameraObs");
+const cameraFormMsg     = $("cameraFormMsg");
+const btnLimparCamera   = $("btnLimparCamera");
+const btnReloadCameras  = $("btnReloadCameras");
+const tbodyCameras      = $("tbodyCameras");
+const cameraCount       = $("cameraCount");
+
+let escolasCacheCameras = [];
+let editandoCameraId    = null;
+
+async function loadCamerasPage(){
+  await loadEscolasSelect();
+  await loadCamerasList();
+}
+
+async function loadEscolasSelect(){
+  if(!cameraEscola) return;
+  try{
+    const snap = await getDocs(query(collection(db,"escolas"), orderBy("nomeLower")));
+    escolasCacheCameras = [];
+    snap.forEach(d => escolasCacheCameras.push(d.data()));
+
+    cameraEscola.innerHTML = '<option value="">— Selecione uma escola —</option>';
+    escolasCacheCameras.forEach(s => {
+      cameraEscola.innerHTML += `<option value="${escapeHtml(s.cie)}">${escapeHtml(s.nome)} (${escapeHtml(s.cie)})</option>`;
+    });
+  }catch(e){
+    console.error("loadEscolasSelect",e);
+  }
+}
+
+async function loadCamerasList(){
+  if(!tbodyCameras) return;
+  try{
+    const q = query(collection(db,"cameras"), orderBy("escolaNome"));
+    const snap = await getDocs(q);
+
+    const count = snap.size;
+    if(cameraCount) cameraCount.textContent = `${count} DVR${count !== 1 ? 's' : ''} cadastrado${count !== 1 ? 's' : ''}`;
+
+    let html = "";
+    snap.forEach(d => {
+      const c = { id: d.id, ...d.data() };
+      html += `
+        <tr>
+          <td data-label="Escola">${escapeHtml(c.escolaNome || "—")}</td>
+          <td data-label="IP"><code>${escapeHtml(c.ip)}</code></td>
+          <td data-label="Porta">${escapeHtml(c.porta || "—")}</td>
+          <td data-label="Usuário">${escapeHtml(c.usuario || "—")}</td>
+          <td data-label="Senha">
+            <span class="senhaMask">••••••</span>
+            <button class="btn btnIcon btnReveal" data-senha="${escapeHtml(c.senha || "")}" title="Mostrar senha">👁️</button>
+          </td>
+          <td data-label="Ações">
+            <button class="btn" data-edit-camera="${escapeHtml(c.id)}">✏️ Editar</button>
+            <button class="btn" data-del-camera="${escapeHtml(c.id)}" style="background:var(--error);color:white">🗑️ Excluir</button>
+          </td>
+        </tr>`;
+    });
+
+    tbodyCameras.innerHTML = html || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum DVR cadastrado</td></tr>`;
+
+    // Eventos de revelar senha
+    tbodyCameras.querySelectorAll(".btnReveal").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const span = btn.previousElementSibling;
+        if(span.textContent === "••••••"){
+          span.textContent = btn.dataset.senha || "(vazia)";
+          btn.textContent = "🙈";
+        }else{
+          span.textContent = "••••••";
+          btn.textContent = "👁️";
+        }
+      });
+    });
+
+    // Eventos de editar
+    tbodyCameras.querySelectorAll("[data-edit-camera]").forEach(btn => {
+      btn.addEventListener("click", () => preencherFormEdicao(btn.dataset.editCamera));
+    });
+
+    // Eventos de excluir
+    tbodyCameras.querySelectorAll("[data-del-camera]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if(!confirm("Excluir este DVR?")) return;
+        await deleteDoc(doc(db,"cameras",btn.dataset.delCamera));
+        await loadCamerasList();
+      });
+    });
+
+  }catch(e){
+    console.error("loadCamerasList",e);
+    tbodyCameras.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--error)">Erro ao carregar lista</td></tr>`;
+  }
+}
+
+async function preencherFormEdicao(id){
+  try{
+    const snap = await getDoc(doc(db,"cameras",id));
+    if(!snap.exists()) return alert("DVR não encontrado");
+
+    const c = snap.data();
+    editandoCameraId = id;
+
+    if(cameraEscola) cameraEscola.value = c.cie || "";
+    if(cameraIp) cameraIp.value = c.ip || "";
+    if(cameraPorta) cameraPorta.value = c.porta || "";
+    if(cameraUsuario) cameraUsuario.value = c.usuario || "";
+    if(cameraSenha) cameraSenha.value = c.senha || "";
+    if(cameraObs) cameraObs.value = c.obs || "";
+
+    setMsg(cameraFormMsg,"","");
+    cameraForm?.scrollIntoView({ behavior: "smooth" });
+  }catch(e){
+    console.error(e);
+    alert("Erro ao carregar dados");
+  }
+}
+
+cameraForm?.addEventListener("submit", async e => {
+  e.preventDefault();
+  setMsg(cameraFormMsg,"","");
+
+  const cie      = cameraEscola?.value || "";
+  const ip       = (cameraIp?.value || "").trim();
+  const porta    = (cameraPorta?.value || "").trim();
+  const usuario  = (cameraUsuario?.value || "").trim();
+  const senha    = (cameraSenha?.value || "").trim();
+  const obs      = (cameraObs?.value || "").trim();
+
+  if(!cie) return setMsg(cameraFormMsg,"Selecione uma escola","err");
+  if(!ip)  return setMsg(cameraFormMsg,"Informe o IP do DVR","err");
+
+  const escola = escolasCacheCameras.find(s => s.cie === cie);
+  const escolaNome = escola ? escola.nome : cie;
+
+  const dados = {
+    cie,
+    escolaNome,
+    ip,
+    porta: porta || "8080",
+    usuario,
+    senha,
+    obs,
+    atualizadoEm: Date.now(),
+    atualizadoPor: currentUid()
+  };
+
+  try{
+    if(editandoCameraId){
+      await setDoc(doc(db,"cameras",editandoCameraId), dados, { merge:true });
+      editandoCameraId = null;
+    }else{
+      await addDoc(collection(db,"cameras"), dados);
+    }
+
+    cameraForm?.reset();
+    if(cameraPorta) cameraPorta.value = "8080";
+    setMsg(cameraFormMsg,"Salvo com sucesso","ok");
+    await loadCamerasList();
+  }catch(err){
+    console.error(err);
+    setMsg(cameraFormMsg,"Erro ao salvar","err");
+  }
+});
+
+btnLimparCamera?.addEventListener("click", () => {
+  cameraForm?.reset();
+  if(cameraPorta) cameraPorta.value = "8080";
+  editandoCameraId = null;
+  setMsg(cameraFormMsg,"","");
+});
+
+btnReloadCameras?.addEventListener("click", loadCamerasList);

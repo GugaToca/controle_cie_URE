@@ -1623,3 +1623,27 @@ body.dark .modernTable td code {
     margin: 2px auto 0;
   }
 }
+
+/* ================= CÂMERAS ================= */
+
+.senhaMask {
+  font-family: monospace;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  margin-right: 8px;
+}
+
+.btnReveal {
+  padding: 4px 8px;
+  font-size: 14px;
+  background: var(--secondary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btnReveal:hover {
+  background: var(--secondary-hover);
+  transform: scale(1.1);
+}
