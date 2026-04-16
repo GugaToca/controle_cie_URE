@@ -10,7 +10,7 @@ const ASSETS = [
   'manifest.json'
 ];
 
-const CACHE_NAME = 'ure-v2';
+const CACHE_NAME = 'ure-v3';
 
 /* ---------- INSTALL — cacheia todos os arquivos estáticos ---------- */
 

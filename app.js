@@ -536,6 +536,9 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageCamerasEl = document.getElementById("page-cameras");
     if(pageCamerasEl) pageCamerasEl.style.display = page === "cameras" ? "block" : "none";
 
+    const pageAcessosEl = document.getElementById("page-acessos");
+    if(pageAcessosEl) pageAcessosEl.style.display = page === "acessos" ? "block" : "none";
+
     if(page === "historico"){
       loadHistoricoCards();
     }
@@ -546,6 +549,10 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
 
     if(page === "cameras"){
       loadCamerasPage();
+    }
+
+    if(page === "acessos"){
+      loadAcessosPage();
     }
 
   });
@@ -1482,3 +1489,166 @@ btnLimparCamera?.addEventListener("click", () => {
 });
 
 btnReloadCameras?.addEventListener("click", loadCamerasList);
+
+/* ================= ACESSOS ================= */
+
+const acessoForm        = $("acessoForm");
+const acessoProcesso    = $("acessoProcesso");
+const acessoDescricao   = $("acessoDescricao");
+const acessoUsuario     = $("acessoUsuario");
+const acessoSenha       = $("acessoSenha");
+const acessoLink        = $("acessoLink");
+const acessoObs         = $("acessoObs");
+const acessoFormMsg     = $("acessoFormMsg");
+const btnLimparAcesso   = $("btnLimparAcesso");
+const btnReloadAcessos  = $("btnReloadAcessos");
+const tbodyAcessos      = $("tbodyAcessos");
+const acessoCount       = $("acessoCount");
+
+let editandoAcessoId    = null;
+
+async function loadAcessosPage(){
+  await loadAcessosList();
+}
+
+async function loadAcessosList(){
+  if(!tbodyAcessos) return;
+  try{
+    const q = query(collection(db,"acessos"), orderBy("processoLower"));
+    const snap = await getDocs(q);
+
+    const count = snap.size;
+    if(acessoCount) acessoCount.textContent = `${count} acesso${count !== 1 ? 's' : ''} cadastrado${count !== 1 ? 's' : ''}`;
+
+    let html = "";
+    snap.forEach(d => {
+      const a = { id: d.id, ...d.data() };
+      const linkHtml = a.link
+        ? `<a href="${escapeHtml(a.link)}" target="_blank" rel="noopener" class="btn btnSecondary btnSmall">🔗 Abrir</a>`
+        : "—";
+
+      html += `
+        <tr>
+          <td data-label="Processo"><strong>${escapeHtml(a.processo)}</strong></td>
+          <td data-label="Descrição">${escapeHtml(a.descricao || "—")}</td>
+          <td data-label="Usuário"><code>${escapeHtml(a.usuario || "—")}</code></td>
+          <td data-label="Senha">
+            <span class="senhaMask">••••••</span>
+            <button class="btn btnIcon btnReveal" data-senha="${escapeHtml(a.senha || "")}" title="Mostrar senha">👁️</button>
+          </td>
+          <td data-label="Link">${linkHtml}</td>
+          <td data-label="Ações">
+            <button class="btn" data-edit-acesso="${escapeHtml(a.id)}">✏️ Editar</button>
+            <button class="btn" data-del-acesso="${escapeHtml(a.id)}" style="background:var(--error);color:white">🗑️ Excluir</button>
+          </td>
+        </tr>`;
+    });
+
+    tbodyAcessos.innerHTML = html || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum acesso cadastrado</td></tr>`;
+
+    // Eventos de revelar senha
+    tbodyAcessos.querySelectorAll(".btnReveal").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const span = btn.previousElementSibling;
+        if(span.textContent === "••••••"){
+          span.textContent = btn.dataset.senha || "(vazia)";
+          btn.textContent = "🙈";
+        }else{
+          span.textContent = "••••••";
+          btn.textContent = "👁️";
+        }
+      });
+    });
+
+    // Eventos de editar
+    tbodyAcessos.querySelectorAll("[data-edit-acesso]").forEach(btn => {
+      btn.addEventListener("click", () => preencherFormAcesso(btn.dataset.editAcesso));
+    });
+
+    // Eventos de excluir
+    tbodyAcessos.querySelectorAll("[data-del-acesso]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if(!confirm("Excluir este acesso?")) return;
+        await deleteDoc(doc(db,"acessos",btn.dataset.delAcesso));
+        await loadAcessosList();
+      });
+    });
+
+  }catch(e){
+    console.error("loadAcessosList",e);
+    tbodyAcessos.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--error)">Erro ao carregar lista</td></tr>`;
+  }
+}
+
+async function preencherFormAcesso(id){
+  try{
+    const snap = await getDoc(doc(db,"acessos",id));
+    if(!snap.exists()) return alert("Acesso não encontrado");
+
+    const a = snap.data();
+    editandoAcessoId = id;
+
+    if(acessoProcesso)  acessoProcesso.value  = a.processo  || "";
+    if(acessoDescricao) acessoDescricao.value = a.descricao || "";
+    if(acessoUsuario)   acessoUsuario.value   = a.usuario   || "";
+    if(acessoSenha)     acessoSenha.value     = a.senha     || "";
+    if(acessoLink)      acessoLink.value      = a.link      || "";
+    if(acessoObs)       acessoObs.value       = a.obs       || "";
+
+    setMsg(acessoFormMsg,"","");
+    acessoForm?.scrollIntoView({ behavior: "smooth" });
+  }catch(e){
+    console.error(e);
+    alert("Erro ao carregar dados");
+  }
+}
+
+acessoForm?.addEventListener("submit", async e => {
+  e.preventDefault();
+  setMsg(acessoFormMsg,"","");
+
+  const processo   = (acessoProcesso?.value  || "").trim();
+  const descricao  = (acessoDescricao?.value || "").trim();
+  const usuario    = (acessoUsuario?.value   || "").trim();
+  const senha      = (acessoSenha?.value     || "").trim();
+  const link       = (acessoLink?.value      || "").trim();
+  const obs        = (acessoObs?.value       || "").trim();
+
+  if(!processo) return setMsg(acessoFormMsg,"Informe o processo/sistema","err");
+
+  const dados = {
+    processo,
+    processoLower: processo.toLowerCase(),
+    descricao,
+    usuario,
+    senha,
+    link,
+    obs,
+    atualizadoEm: Date.now(),
+    atualizadoPor: currentUid()
+  };
+
+  try{
+    if(editandoAcessoId){
+      await setDoc(doc(db,"acessos",editandoAcessoId), dados, { merge:true });
+      editandoAcessoId = null;
+    }else{
+      await addDoc(collection(db,"acessos"), dados);
+    }
+
+    acessoForm?.reset();
+    setMsg(acessoFormMsg,"Salvo com sucesso","ok");
+    await loadAcessosList();
+  }catch(err){
+    console.error(err);
+    setMsg(acessoFormMsg,"Erro ao salvar","err");
+  }
+});
+
+btnLimparAcesso?.addEventListener("click", () => {
+  acessoForm?.reset();
+  editandoAcessoId = null;
+  setMsg(acessoFormMsg,"","");
+});
+
+btnReloadAcessos?.addEventListener("click", loadAcessosList);

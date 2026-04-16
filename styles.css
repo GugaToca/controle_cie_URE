@@ -1647,3 +1647,9 @@ body.dark .modernTable td code {
   background: var(--secondary-hover);
   transform: scale(1.1);
 }
+
+.btnSmall {
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 28px;
+}
