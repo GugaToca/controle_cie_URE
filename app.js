@@ -111,7 +111,7 @@ function normalizeSearch(str){
     .toString()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .replace(/[\u0300-\u036f]/g, "")
     .trim();
 }
 
@@ -189,7 +189,6 @@ onAuthStateChanged(auth, (user)=>{
     registrarUsuario(user);
     loadList();
 
-    // Aviso de novidades — exibe apenas na primeira vez de cada usuário após a atualização
     const NOVIDADES_KEY = `novidadesAgenda_v1_${user.uid}`;
     if(!localStorage.getItem(NOVIDADES_KEY)){
       const modalNovidades = $("modalNovidades");
@@ -296,7 +295,6 @@ async function loadList(){
 
   if(tbody) tbody.innerHTML = rows;
 
-  /* IMPORTANTÍSSIMO: re-ligar eventos toda vez que renderiza a lista */
   tbody?.querySelectorAll("[data-edit]").forEach(btn=>{
     btn.addEventListener("click", ()=>fillForm(btn.dataset.edit));
   });
@@ -642,7 +640,6 @@ async function openHistorico(cie){
   if(modalHistorico) modalHistorico.style.display = "flex";
   if(historicoTexto) historicoTexto.value = "";
 
-  // título do modal
   const schoolSnap = await getDoc(schoolDocRef(cie));
   if(modalSchool){
     if(schoolSnap.exists()){
@@ -653,7 +650,6 @@ async function openHistorico(cie){
     }
   }
 
-  // lista de históricos
   const histCol = collection(db,"escolas",cie,"historico");
   const histSnap = await getDocs(histCol);
 
@@ -664,7 +660,6 @@ async function openHistorico(cie){
     return;
   }
 
-  // ordena no front por dataHora (se existir) ou por data string
   const items = [];
   histSnap.forEach(d=>{
     items.push({ id:d.id, ...d.data() });
@@ -700,7 +695,7 @@ async function openHistorico(cie){
 
       await deleteDoc(doc(db,"escolas",currentCIE,"historico",id));
 
-      openHistorico(currentCIE); // recarrega
+      openHistorico(currentCIE);
 
     });
   });
@@ -726,12 +721,12 @@ if(btnSalvarHistorico){
     try{
 
       await addDoc(collection(db,"escolas",currentCIE,"historico"),{
-  texto: texto,
-  tecnico: getUserFirstName(),
-  email: auth.currentUser.email,
-  data: new Date().toLocaleDateString(),
-  dataHora: Date.now()
-});
+        texto: texto,
+        tecnico: getUserFirstName(),
+        email: auth.currentUser.email,
+        data: new Date().toLocaleDateString(),
+        dataHora: Date.now()
+      });
 
       historicoTexto.value = "";
 
@@ -752,7 +747,6 @@ btnFecharModal?.addEventListener("click", ()=>{
   if(modalHistorico) modalHistorico.style.display = "none";
 });
 
-// fecha modal clicando no fundo (opcional, não quebra nada)
 modalHistorico?.addEventListener("click",(e)=>{
   if(e.target === modalHistorico){
     modalHistorico.style.display = "none";
@@ -761,7 +755,6 @@ modalHistorico?.addEventListener("click",(e)=>{
 
 /* ================= AGENDA ================= */
 
-// --- Estado ---
 let agendaViewUid = null;
 let agendaMes = new Date().getMonth();
 let agendaAno = new Date().getFullYear();
@@ -770,7 +763,6 @@ let currentEventoEditId = null;
 let agendaEventos = [];
 let agendaEscolasCached = [];
 
-// --- Refs DOM ---
 const agendaSelector       = $("agendaSelector");
 const btnCompartilharAgenda= $("btnCompartilharAgenda");
 const btnNovoEvento        = $("btnNovoEvento");
@@ -807,8 +799,6 @@ const listaUsuariosCompartilhar= $("listaUsuariosCompartilhar");
 const btnConfirmarCompartilhar = $("btnConfirmarCompartilhar");
 const btnFecharCompartilhar    = $("btnFecharCompartilhar");
 
-// --- Helpers ---
-
 function isDono(){
   return agendaViewUid === currentUid();
 }
@@ -820,8 +810,6 @@ function dtLocalValue(ms){
   return `${d.getFullYear()}-${padZ(d.getMonth()+1)}-${padZ(d.getDate())}T${padZ(d.getHours())}:${padZ(d.getMinutes())}`;
 }
 
-// --- Registrar usuário ---
-
 async function registrarUsuario(user){
   try{
     await setDoc(doc(db,"usuarios",user.uid),{
@@ -832,16 +820,12 @@ async function registrarUsuario(user){
   }catch(e){ console.error("registrarUsuario",e); }
 }
 
-// --- Carregar usuários ---
-
 async function loadUsuarios(){
   const snap = await getDocs(collection(db,"usuarios"));
   const lista = [];
   snap.forEach(d => lista.push(d.data()));
   return lista;
 }
-
-// --- Seletor de agenda ---
 
 async function loadAgendaSelector(){
   if(!agendaSelector) return;
@@ -861,12 +845,9 @@ async function loadAgendaSelector(){
   }catch(e){ console.error("loadAgendaSelector",e); }
 }
 
-// --- Carregar página da agenda ---
-
 async function loadAgendaPage(){
   agendaViewUid = agendaSelector?.value || currentUid();
 
-  // Escolas para o select do formulário
   try{
     const snap = await getDocs(query(collection(db,"escolas"), orderBy("nomeLower")));
     agendaEscolasCached = [];
@@ -879,7 +860,6 @@ async function loadAgendaPage(){
     }
   }catch(e){ console.error("loadEscolas",e); }
 
-  // Mostrar/ocultar botão de novo evento
   if(btnNovoEvento) btnNovoEvento.style.display = isDono() ? "inline-flex" : "none";
 
   await loadEventos();
@@ -903,8 +883,6 @@ async function loadEventos(){
   }
 }
 
-// --- Calendário ---
-
 function renderCalendario(eventos, mes, ano){
   if(!calendarioGrid || !calendarioMesAno) return;
 
@@ -916,7 +894,6 @@ function renderCalendario(eventos, mes, ano){
   const primeiroDia = new Date(ano, mes, 1).getDay();
   const ultimoDia   = new Date(ano, mes + 1, 0).getDate();
 
-  // Mapa dia → eventos
   const eventosPorDia = {};
   eventos.forEach(ev => {
     if(!ev.dataHoraMs) return;
@@ -959,7 +936,6 @@ function renderCalendario(eventos, mes, ano){
 
   calendarioGrid.innerHTML = html;
 
-  // Clique nos chips
   calendarioGrid.querySelectorAll(".eventoChip").forEach(chip => {
     chip.addEventListener("click", e => {
       e.stopPropagation();
@@ -967,7 +943,6 @@ function renderCalendario(eventos, mes, ano){
     });
   });
 
-  // Clique no dia para criar evento (somente dono)
   if(isDono()){
     calendarioGrid.querySelectorAll(".diaCell:not(.vazio)").forEach(cell => {
       cell.addEventListener("click", () => {
@@ -977,8 +952,6 @@ function renderCalendario(eventos, mes, ano){
     });
   }
 }
-
-// --- Lista ---
 
 function renderListaEventos(eventos){
   if(!agendaListaEl) return;
@@ -1017,8 +990,6 @@ function renderListaEventos(eventos){
   });
 }
 
-// --- Modal criar/editar evento ---
-
 function abrirModalNovoEvento(dataInicial){
   currentEventoEditId = null;
   if(formEvento) formEvento.reset();
@@ -1033,9 +1004,9 @@ function abrirModalNovoEvento(dataInicial){
 
 function abrirModalEditarEvento(ev){
   currentEventoEditId = ev.id;
-  if(eventoTitulo)   eventoTitulo.value    = ev.titulo    || "";
+  if(eventoTitulo) eventoTitulo.value = ev.titulo || "";
   if(eventoDescricao) eventoDescricao.value = ev.descricao || "";
-  if(eventoEscola)   eventoEscola.value    = ev.cie       || "";
+  if(eventoEscola) eventoEscola.value = ev.cie || "";
   if(eventoDataHora && ev.dataHoraMs){
     eventoDataHora.value = dtLocalValue(ev.dataHoraMs);
   }
@@ -1043,18 +1014,18 @@ function abrirModalEditarEvento(ev){
   if(titleEl) titleEl.textContent = "Editar Evento";
   setMsg(eventoFormMsg,"","");
   if(modalEventoDetalhe) modalEventoDetalhe.style.display = "none";
-  if(modalEvento)        modalEvento.style.display = "flex";
+  if(modalEvento) modalEvento.style.display = "flex";
 }
 
 formEvento?.addEventListener("submit", async e => {
   e.preventDefault();
 
-  const titulo     = eventoTitulo?.value.trim()   || "";
-  const dataHoraVal= eventoDataHora?.value         || "";
-  const cie        = eventoEscola?.value           || "";
-  const descricao  = eventoDescricao?.value.trim() || "";
+  const titulo = eventoTitulo?.value.trim() || "";
+  const dataHoraVal= eventoDataHora?.value || "";
+  const cie = eventoEscola?.value || "";
+  const descricao = eventoDescricao?.value.trim() || "";
 
-  if(!titulo)      return setMsg(eventoFormMsg,"Informe o título","err");
+  if(!titulo) return setMsg(eventoFormMsg,"Informe o título","err");
   if(!dataHoraVal) return setMsg(eventoFormMsg,"Informe a data e hora","err");
 
   const dataHoraMs = new Date(dataHoraVal).getTime();
@@ -1073,8 +1044,6 @@ formEvento?.addEventListener("submit", async e => {
     setMsg(eventoFormMsg,"Erro ao salvar evento","err");
   }
 });
-
-// --- Modal detalhe do evento ---
 
 async function openEventoDetalhe(eventoId){
   const ev = agendaEventos.find(e => e.id === eventoId);
@@ -1129,8 +1098,6 @@ async function openEventoDetalhe(eventoId){
 
   if(modalEventoDetalhe) modalEventoDetalhe.style.display = "flex";
 }
-
-// --- Comentários ---
 
 async function loadComentarios(eventoId){
   if(!detalheComentarios) return;
@@ -1190,8 +1157,6 @@ async function salvarComentario(eventoId, texto){
   });
 }
 
-// --- Modal compartilhamento ---
-
 async function abrirModalCompartilhar(){
   if(!listaUsuariosCompartilhar) return;
   listaUsuariosCompartilhar.innerHTML = "<p>Carregando...</p>";
@@ -1226,7 +1191,7 @@ async function abrirModalCompartilhar(){
 }
 
 btnConfirmarCompartilhar?.addEventListener("click", async () => {
-  const meuUid    = currentUid();
+  const meuUid = currentUid();
   const checkboxes= listaUsuariosCompartilhar?.querySelectorAll("input[type=checkbox]") || [];
   const selecionados = [];
   checkboxes.forEach(cb => { if(cb.checked) selecionados.push(cb.value); });
@@ -1246,14 +1211,12 @@ btnConfirmarCompartilhar?.addEventListener("click", async () => {
   }
 });
 
-// --- View toggle ---
-
 btnViewCalendario?.addEventListener("click", () => {
   agendaView = "calendario";
   btnViewCalendario.classList.add("active");
   btnViewLista?.classList.remove("active");
   if(agendaCalendario) agendaCalendario.style.display = "block";
-  if(agendaListaEl)    agendaListaEl.style.display    = "none";
+  if(agendaListaEl) agendaListaEl.style.display = "none";
   renderCalendario(agendaEventos, agendaMes, agendaAno);
 });
 
@@ -1262,11 +1225,9 @@ btnViewLista?.addEventListener("click", () => {
   btnViewLista.classList.add("active");
   btnViewCalendario?.classList.remove("active");
   if(agendaCalendario) agendaCalendario.style.display = "none";
-  if(agendaListaEl)    agendaListaEl.style.display    = "block";
+  if(agendaListaEl) agendaListaEl.style.display = "block";
   renderListaEventos(agendaEventos);
 });
-
-// --- Navegação de mês ---
 
 btnMesAnterior?.addEventListener("click", () => {
   agendaMes--;
@@ -1280,15 +1241,11 @@ btnProximoMes?.addEventListener("click", () => {
   renderCalendario(agendaEventos, agendaMes, agendaAno);
 });
 
-// --- Seletor de agenda ---
-
 agendaSelector?.addEventListener("change", () => {
   agendaViewUid = agendaSelector.value;
   if(btnNovoEvento) btnNovoEvento.style.display = isDono() ? "inline-flex" : "none";
   loadEventos();
 });
-
-// --- Botões globais ---
 
 btnNovoEvento?.addEventListener("click", () => {
   if(!isDono()) return;
@@ -1298,7 +1255,7 @@ btnNovoEvento?.addEventListener("click", () => {
 btnCompartilharAgenda?.addEventListener("click", abrirModalCompartilhar);
 
 btnFecharModalEvento?.addEventListener("click", () => { if(modalEvento) modalEvento.style.display = "none"; });
-btnCancelarEvento?.addEventListener("click",    () => { if(modalEvento) modalEvento.style.display = "none"; });
+btnCancelarEvento?.addEventListener("click", () => { if(modalEvento) modalEvento.style.display = "none"; });
 modalEvento?.addEventListener("click", e => { if(e.target === modalEvento) modalEvento.style.display = "none"; });
 
 btnFecharDetalhe?.addEventListener("click", () => { if(modalEventoDetalhe) modalEventoDetalhe.style.display = "none"; });
@@ -1358,10 +1315,11 @@ async function loadCamerasList(){
     let html = "";
     snap.forEach(d => {
       const c = { id: d.id, ...d.data() };
+
       html += `
         <tr>
           <td data-label="Escola">${escapeHtml(c.escolaNome || "—")}</td>
-          <td data-label="IP"><code>${escapeHtml(c.ip)}</code></td>
+          <td data-label="IP"><code>${escapeHtml(c.ip || "—")}</code></td>
           <td data-label="Porta">${escapeHtml(c.porta || "—")}</td>
           <td data-label="Usuário">${escapeHtml(c.usuario || "—")}</td>
           <td data-label="Senha">
@@ -1369,6 +1327,7 @@ async function loadCamerasList(){
             <button class="btn btnIcon btnReveal" data-senha="${escapeHtml(c.senha || "")}" title="Mostrar senha">👁️</button>
           </td>
           <td data-label="Ações">
+            <button class="btn btnAccessCamera" data-url="http://${escapeHtml(c.ip || "")}:${escapeHtml(c.porta || "")}">🌐 Acessar</button>
             <button class="btn" data-edit-camera="${escapeHtml(c.id)}">✏️ Editar</button>
             <button class="btn" data-del-camera="${escapeHtml(c.id)}" style="background:var(--error);color:white">🗑️ Excluir</button>
           </td>
@@ -1377,7 +1336,17 @@ async function loadCamerasList(){
 
     tbodyCameras.innerHTML = html || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum DVR cadastrado</td></tr>`;
 
-    // Eventos de revelar senha
+    tbodyCameras.querySelectorAll(".btnAccessCamera").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const url = btn.dataset.url;
+        if(!url || url === "http://:8080"){
+          alert("IP do DVR inválido");
+          return;
+        }
+        window.open(url, "_blank");
+      });
+    });
+
     tbodyCameras.querySelectorAll(".btnReveal").forEach(btn => {
       btn.addEventListener("click", () => {
         const span = btn.previousElementSibling;
@@ -1391,12 +1360,10 @@ async function loadCamerasList(){
       });
     });
 
-    // Eventos de editar
     tbodyCameras.querySelectorAll("[data-edit-camera]").forEach(btn => {
       btn.addEventListener("click", () => preencherFormEdicao(btn.dataset.editCamera));
     });
 
-    // Eventos de excluir
     tbodyCameras.querySelectorAll("[data-del-camera]").forEach(btn => {
       btn.addEventListener("click", async () => {
         if(!confirm("Excluir este DVR?")) return;
@@ -1455,7 +1422,7 @@ cameraForm?.addEventListener("submit", async e => {
     cie,
     escolaNome,
     ip,
-    porta: porta || "8080",
+    porta,
     usuario,
     senha,
     obs,
@@ -1472,7 +1439,7 @@ cameraForm?.addEventListener("submit", async e => {
     }
 
     cameraForm?.reset();
-    if(cameraPorta) cameraPorta.value = "8080";
+    if(cameraPorta) cameraPorta.value = "";
     setMsg(cameraFormMsg,"Salvo com sucesso","ok");
     await loadCamerasList();
   }catch(err){
@@ -1483,7 +1450,7 @@ cameraForm?.addEventListener("submit", async e => {
 
 btnLimparCamera?.addEventListener("click", () => {
   cameraForm?.reset();
-  if(cameraPorta) cameraPorta.value = "8080";
+  if(cameraPorta) cameraPorta.value = "";
   editandoCameraId = null;
   setMsg(cameraFormMsg,"","");
 });
@@ -1546,7 +1513,6 @@ async function loadAcessosList(){
 
     tbodyAcessos.innerHTML = html || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum acesso cadastrado</td></tr>`;
 
-    // Eventos de revelar senha
     tbodyAcessos.querySelectorAll(".btnReveal").forEach(btn => {
       btn.addEventListener("click", () => {
         const span = btn.previousElementSibling;
@@ -1560,12 +1526,10 @@ async function loadAcessosList(){
       });
     });
 
-    // Eventos de editar
     tbodyAcessos.querySelectorAll("[data-edit-acesso]").forEach(btn => {
       btn.addEventListener("click", () => preencherFormAcesso(btn.dataset.editAcesso));
     });
 
-    // Eventos de excluir
     tbodyAcessos.querySelectorAll("[data-del-acesso]").forEach(btn => {
       btn.addEventListener("click", async () => {
         if(!confirm("Excluir este acesso?")) return;
