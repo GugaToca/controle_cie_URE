@@ -1,18 +1,18 @@
-/* ================= SERVICE WORKER — URE SJR Preto ================= */
-/* Para forçar atualização do cache, incremente a versão: ure-v2, ure-v3... */
+/* ================= SERVICE WORKER - URE SJR Preto ================= */
+/* Para forcar atualizacao do cache, incremente a versao: ure-v2, ure-v3... */
+
+const CACHE_NAME = 'ure-v5';
 
 const ASSETS = [
   '.',
   'index.html',
   'styles.css',
   'app.js',
-  'masct_ure.png',
+  'icon.svg',
   'manifest.json'
 ];
 
-const CACHE_NAME = 'ure-v3';
-
-/* ---------- INSTALL — cacheia todos os arquivos estáticos ---------- */
+/* ---------- INSTALL - cacheia todos os arquivos estaticos ---------- */
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -22,7 +22,7 @@ self.addEventListener('install', e => {
   );
 });
 
-/* ---------- ACTIVATE — remove caches de versões antigas ---------- */
+/* ---------- ACTIVATE - remove caches de versoes antigas ---------- */
 
 self.addEventListener('activate', e => {
   e.waitUntil(
@@ -36,14 +36,14 @@ self.addEventListener('activate', e => {
   );
 });
 
-/* ---------- FETCH — Cache First para arquivos locais ---------- */
+/* ---------- FETCH - Cache First para arquivos locais ---------- */
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
 
-  // Ignora chamadas para Firebase / Google — o Firestore cuida do próprio cache
+  // Ignora chamadas para Firebase / Google - o Firestore cuida do proprio cache
   const externas = ['firestore.googleapis.com', 'googleapis.com', 'gstatic.com',
                     'firebase.com', 'firebaseio.com', 'firebaseapp.com',
                     'google.com', 'identitytoolkit.googleapis.com'];
@@ -64,7 +64,7 @@ self.addEventListener('fetch', e => {
         return cached;
       }
 
-      // Não está no cache — busca na rede e cacheia
+      // Nao esta no cache - busca na rede e cacheia
       return fetch(e.request)
         .then(response => {
           const clone = response.clone();
@@ -72,7 +72,7 @@ self.addEventListener('fetch', e => {
           return response;
         })
         .catch(() => {
-          // Offline e não em cache — retorna index.html para navegação
+          // Offline e nao em cache - retorna index.html para navegacao
           if (e.request.destination === 'document') {
             return caches.match('index.html');
           }

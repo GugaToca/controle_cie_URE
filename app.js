@@ -1,4 +1,4 @@
-/* ================= FIREBASE ================= */
+﻿/* ================= FIREBASE ================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 
@@ -83,7 +83,7 @@ const toggleDark = $("toggleDark");
 
 const userDisplay = $("userDisplay");
 
-/* histórico (novo) */
+/* historico (novo) */
 const cardsHistorico = $("cardsHistorico");
 const modalHistorico = $("modalHistorico");
 const modalSchool = $("modalSchool");
@@ -95,6 +95,7 @@ const searchHistorico = $("searchHistorico");
 
 let currentCIE = null;
 let historicoEscolas = [];
+let escolasCache = [];
 
 /* ================= HELPERS ================= */
 
@@ -135,6 +136,35 @@ function escapeHtml(str){
     .replaceAll("'","&#039;");
 }
 
+function toHttpsUrlOrEmpty(urlStr){
+  const raw = (urlStr || "").trim();
+  if(!raw) return "";
+  try{
+    const url = new URL(raw);
+    const protocol = url.protocol.toLowerCase();
+    if(protocol !== "http:" && protocol !== "https:") return "";
+    return url.href;
+  }catch{
+    return "";
+  }
+}
+
+function normalizePort(porta){
+  const raw = (porta || "").trim();
+  if(!raw) return "";
+  if(!/^\d{1,5}$/.test(raw)) return "";
+  const n = Number(raw);
+  if(n < 1 || n > 65535) return "";
+  return String(n);
+}
+
+function buildCameraUrl(ip, porta){
+  const host = (ip || "").trim();
+  if(!host) return "";
+  const safePort = normalizePort(porta);
+  return `http://${host}${safePort ? ":" + safePort : ""}`;
+}
+
 function currentUid(){
   return auth.currentUser ? auth.currentUser.uid : null;
 }
@@ -164,7 +194,7 @@ loginForm?.addEventListener("submit", async (e)=>{
   try{
     await signInWithEmailAndPassword(auth, email, password);
   }catch(err){
-    if(loginError) loginError.textContent = "Email ou senha inválidos";
+    if(loginError) loginError.textContent = "Email ou senha invalidos";
   }
 
 });
@@ -183,7 +213,7 @@ onAuthStateChanged(auth, (user)=>{
     if(appScreen) appScreen.style.display = "block";
 
     if(userDisplay){
-      userDisplay.textContent = "👤 " + getUserFirstName();
+      userDisplay.textContent = getUserFirstName();
     }
 
     registrarUsuario(user);
@@ -222,11 +252,11 @@ form?.addEventListener("submit", async (e)=>{
 
   const cie = onlyDigits(cieEl?.value);
   const nome = normalizeName(nomeEl?.value);
-  const ure = normalizeName(ureEl?.value) || "São José do Rio Preto";
+  const ure = normalizeName(ureEl?.value) || "Sao Jose do Rio Preto";
   const municipio = normalizeName(municipioEl?.value);
 
-  if(!cie) return setMsg(formMsg,"CIE inválido","err");
-  if(!nome) return setMsg(formMsg,"Nome inválido","err");
+  if(!cie) return setMsg(formMsg,"CIE invalido","err");
+  if(!nome) return setMsg(formMsg,"Nome invalido","err");
 
   const ref = schoolDocRef(cie);
   const now = Date.now();
@@ -267,6 +297,7 @@ async function loadList(){
 
   const q = query(collection(db,"escolas"), orderBy("nomeLower"));
   const snap = await getDocs(q);
+  escolasCache = [];
 
   if(schoolCount){
     schoolCount.textContent = snap.size + " escolas cadastradas";
@@ -277,12 +308,13 @@ async function loadList(){
   snap.forEach(d=>{
 
     const s = d.data();
+    escolasCache.push(s);
 
     rows += `
     <tr>
       <td data-label="Escola">${escapeHtml(s.nome)}</td>
       <td data-label="CIE"><code>${escapeHtml(s.cie)}</code></td>
-      <td data-label="Município">${escapeHtml(s.municipio)}</td>
+      <td data-label="Municipio">${escapeHtml(s.municipio)}</td>
       <td data-label="URE">${escapeHtml(s.ure)}</td>
       <td>
         <button class="btn" data-edit="${escapeHtml(s.cie)}">Editar</button>
@@ -328,7 +360,7 @@ async function fillForm(cie){
   if(cieEl) cieEl.value = s.cie || "";
   if(nomeEl) nomeEl.value = s.nome || "";
   if(municipioEl) municipioEl.value = s.municipio || "";
-  if(ureEl) ureEl.value = s.ure || "São José do Rio Preto";
+  if(ureEl) ureEl.value = s.ure || "Sao Jose do Rio Preto";
 
   window.scrollTo({ top:0, behavior:"smooth" });
 
@@ -347,7 +379,7 @@ btnSearchCie?.addEventListener("click", async ()=>{
   const snap = await getDoc(schoolDocRef(cie));
 
   if(!snap.exists()){
-    if(result) result.innerHTML = "Não encontrado";
+    if(result) result.innerHTML = "Nao encontrado";
     return;
   }
 
@@ -357,13 +389,13 @@ btnSearchCie?.addEventListener("click", async ()=>{
     result.innerHTML = `
       <strong>${escapeHtml(s.nome)}</strong><br>
       CIE: ${escapeHtml(s.cie)}<br>
-      Município: ${escapeHtml(s.municipio)}
+      Municipio: ${escapeHtml(s.municipio)}
     `;
   }
 
 });
 
-/* ================= BUSCA NOME OU MUNICÍPIO ================= */
+/* ================= BUSCA NOME OU MUNICPIO ================= */
 
 btnSearchNome?.addEventListener("click", async ()=>{
 
@@ -375,14 +407,14 @@ btnSearchNome?.addEventListener("click", async ()=>{
 
   const termos = termRaw.split(" ").filter(t => t.length > 0);
 
-  const snap = await getDocs(collection(db,"escolas"));
+  if(escolasCache.length === 0){
+    await loadList();
+  }
 
   let html = "";
   let found = 0;
 
-  snap.forEach(d=>{
-
-    const s = d.data();
+  escolasCache.forEach(s=>{
 
     const nome = normalizeSearch(s.nome);
     const municipio = normalizeSearch(s.municipio);
@@ -395,8 +427,8 @@ btnSearchNome?.addEventListener("click", async ()=>{
       html += `
         <div>
           <strong>${escapeHtml(s.nome)}</strong>
-          — ${escapeHtml(s.cie)}
-          — ${escapeHtml(s.municipio)}
+           -  ${escapeHtml(s.cie)}
+           -  ${escapeHtml(s.municipio)}
         </div>
       `;
 
@@ -452,7 +484,7 @@ btnBulk?.addEventListener("click", async ()=>{
       nome,
       nomeLower: nome.toLowerCase(),
       municipio,
-      ure: "São José do Rio Preto",
+      ure: "Sao Jose do Rio Preto",
       updatedAt: Date.now(),
       updatedBy: currentUid()
     }, { merge:true });
@@ -511,7 +543,7 @@ tabs.forEach(tab=>{
 
 });
 
-/* ================= MENU PRINCIPAL (Sistema / Histórico) ================= */
+/* ================= MENU PRINCIPAL (Sistema / Historico) ================= */
 
 document.querySelectorAll(".mainTab").forEach(tab=>{
 
@@ -534,9 +566,6 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageCamerasEl = document.getElementById("page-cameras");
     if(pageCamerasEl) pageCamerasEl.style.display = page === "cameras" ? "block" : "none";
 
-    const pageAcessosEl = document.getElementById("page-acessos");
-    if(pageAcessosEl) pageAcessosEl.style.display = page === "acessos" ? "block" : "none";
-
     if(page === "historico"){
       loadHistoricoCards();
     }
@@ -549,15 +578,11 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
       loadCamerasPage();
     }
 
-    if(page === "acessos"){
-      loadAcessosPage();
-    }
-
   });
 
 });
 
-/* ================= HISTÓRICO DE ATENDIMENTO ================= */
+/* ================= HIST?"RICO DE ATENDIMENTO ================= */
 
 async function loadHistoricoCards(){
 
@@ -656,7 +681,7 @@ async function openHistorico(cie){
   if(!historicoLista) return;
 
   if(histSnap.empty){
-    historicoLista.innerHTML = `<div class="msg err">Sem histórico</div>`;
+    historicoLista.innerHTML = `<div class="msg err">Sem historico</div>`;
     return;
   }
 
@@ -673,7 +698,7 @@ async function openHistorico(cie){
   <div class="histItem" data-id="${h.id}">
     <div class="histHeader">
       <strong>${escapeHtml(h.data || "")}</strong>
-      <button class="btnDeleteHist">🗑️</button>
+      <button class="btnDeleteHist">Excluir</button>
     </div>
     ${escapeHtml(h.tecnico || "") ? `<em>${escapeHtml(h.tecnico)}</em><br>` : ``}
     <div>${escapeHtml(h.texto || "")}</div>
@@ -691,7 +716,7 @@ async function openHistorico(cie){
       const item = btn.closest(".histItem");
       const id = item.dataset.id;
 
-      if(!confirm("Excluir esta anotação?")) return;
+      if(!confirm("Excluir esta anotacao?")) return;
 
       await deleteDoc(doc(db,"escolas",currentCIE,"historico",id));
 
@@ -707,14 +732,14 @@ if(btnSalvarHistorico){
   btnSalvarHistorico.addEventListener("click", async ()=>{
 
     if(!currentCIE){
-      alert("Erro: escola não selecionada");
+      alert("Erro: escola nao selecionada");
       return;
     }
 
     const texto = historicoTexto.value.trim();
 
     if(!texto){
-      alert("Digite uma anotação");
+      alert("Digite uma anotacao");
       return;
     }
 
@@ -735,7 +760,7 @@ if(btnSalvarHistorico){
     }catch(err){
 
       console.error(err);
-      alert("Erro ao salvar anotação");
+      alert("Erro ao salvar anotacao");
 
     }
 
@@ -830,7 +855,7 @@ async function loadUsuarios(){
 async function loadAgendaSelector(){
   if(!agendaSelector) return;
   const meuUid = currentUid();
-  agendaSelector.innerHTML = `<option value="${meuUid}">📅 Minha Agenda</option>`;
+  agendaSelector.innerHTML = `<option value="${meuUid}"> Minha Agenda</option>`;
 
   try{
     const q = query(collection(db,"agenda"), where("compartilhadoCom","array-contains",meuUid));
@@ -840,7 +865,7 @@ async function loadAgendaSelector(){
       if(donoUid === meuUid) return;
       const data = d.data();
       const nome = data.nomeProprietario || data.emailProprietario || donoUid;
-      agendaSelector.innerHTML += `<option value="${escapeHtml(donoUid)}">👤 ${escapeHtml(nome)}</option>`;
+      agendaSelector.innerHTML += `<option value="${escapeHtml(donoUid)}"> ${escapeHtml(nome)}</option>`;
     });
   }catch(e){ console.error("loadAgendaSelector",e); }
 }
@@ -853,7 +878,7 @@ async function loadAgendaPage(){
     agendaEscolasCached = [];
     snap.forEach(d => agendaEscolasCached.push(d.data()));
     if(eventoEscola){
-      eventoEscola.innerHTML = '<option value="">— Nenhuma —</option>';
+      eventoEscola.innerHTML = '<option value=""> -  Nenhuma  - </option>';
       agendaEscolasCached.forEach(s => {
         eventoEscola.innerHTML += `<option value="${escapeHtml(s.cie)}">${escapeHtml(s.nome)} (${escapeHtml(s.cie)})</option>`;
       });
@@ -886,7 +911,7 @@ async function loadEventos(){
 function renderCalendario(eventos, mes, ano){
   if(!calendarioGrid || !calendarioMesAno) return;
 
-  const nomeMeses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  const nomeMeses = ["Janeiro","Fevereiro","Marco","Abril","Maio","Junho",
                      "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   calendarioMesAno.textContent = `${nomeMeses[mes]} ${ano}`;
 
@@ -906,7 +931,7 @@ function renderCalendario(eventos, mes, ano){
   });
 
   let html = "";
-  ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].forEach(d => {
+  ["Dom","Seg","Ter","Qua","Qui","Sex","Sab"].forEach(d => {
     html += `<div class="diaHeader">${d}</div>`;
   });
 
@@ -967,7 +992,7 @@ function renderListaEventos(eventos){
   sorted.forEach(ev => {
     const dt = ev.dataHoraMs
       ? new Date(ev.dataHoraMs).toLocaleString("pt-BR",{ dateStyle:"short", timeStyle:"short" })
-      : "—";
+      : " - ";
     const escola = ev.cie ? agendaEscolasCached.find(s => s.cie === ev.cie) : null;
     const escolaNome = escola ? escola.nome : (ev.cie || "");
 
@@ -976,7 +1001,7 @@ function renderListaEventos(eventos){
         <div class="listaEventoData">${dt}</div>
         <div class="listaEventoInfo">
           <strong>${escapeHtml(ev.titulo)}</strong>
-          ${escolaNome ? `<span class="listaEventoEscola">🏫 ${escapeHtml(escolaNome)}</span>` : ""}
+          ${escolaNome ? `<span class="listaEventoEscola"> ${escapeHtml(escolaNome)}</span>` : ""}
           ${ev.descricao ? `<span class="listaEventoDesc">${escapeHtml(ev.descricao)}</span>` : ""}
         </div>
       </div>`;
@@ -1025,7 +1050,7 @@ formEvento?.addEventListener("submit", async e => {
   const cie = eventoEscola?.value || "";
   const descricao = eventoDescricao?.value.trim() || "";
 
-  if(!titulo) return setMsg(eventoFormMsg,"Informe o título","err");
+  if(!titulo) return setMsg(eventoFormMsg,"Informe o titulo","err");
   if(!dataHoraVal) return setMsg(eventoFormMsg,"Informe a data e hora","err");
 
   const dataHoraMs = new Date(dataHoraVal).getTime();
@@ -1053,22 +1078,22 @@ async function openEventoDetalhe(eventoId){
 
   const dt = ev.dataHoraMs
     ? new Date(ev.dataHoraMs).toLocaleString("pt-BR",{ dateStyle:"full", timeStyle:"short" })
-    : "—";
+    : " - ";
   const escola = ev.cie ? agendaEscolasCached.find(s => s.cie === ev.cie) : null;
   const escolaNome = escola ? escola.nome : (ev.cie || "");
 
   if(detalheEventoBody){
     detalheEventoBody.innerHTML = `
-      <div class="detalheItem"><span class="detalheLabel">📆 Data/Hora:</span>${escapeHtml(dt)}</div>
-      ${escolaNome ? `<div class="detalheItem"><span class="detalheLabel">🏫 Escola:</span>${escapeHtml(escolaNome)}</div>` : ""}
-      ${ev.descricao ? `<div class="detalheItem"><span class="detalheLabel">📝 Descrição:</span>${escapeHtml(ev.descricao)}</div>` : ""}`;
+      <div class="detalheItem"><span class="detalheLabel">Data/Hora:</span>${escapeHtml(dt)}</div>
+      ${escolaNome ? `<div class="detalheItem"><span class="detalheLabel">Escola:</span>${escapeHtml(escolaNome)}</div>` : ""}
+      ${ev.descricao ? `<div class="detalheItem"><span class="detalheLabel">Descricao:</span>${escapeHtml(ev.descricao)}</div>` : ""}`;
   }
 
   if(detalheEventoAcoes){
     if(isDono()){
       detalheEventoAcoes.innerHTML = `
-        <button class="btn primary" id="btnEditarEvento">✏️ Editar</button>
-        <button class="btn" id="btnExcluirEvento" style="background:var(--error);color:white">🗑️ Excluir</button>`;
+        <button class="btn primary" id="btnEditarEvento">Editar</button>
+        <button class="btn" id="btnExcluirEvento" style="background:var(--error);color:white">Excluir</button>`;
 
       $("btnEditarEvento")?.addEventListener("click", () => abrirModalEditarEvento(ev));
       $("btnExcluirEvento")?.addEventListener("click", async () => {
@@ -1109,7 +1134,7 @@ async function loadComentarios(eventoId){
     items.sort((a,b) => (a.criadoEm||0) - (b.criadoEm||0));
 
     if(items.length === 0){
-      detalheComentarios.innerHTML = `<div class="msg err" style="display:block;margin-bottom:12px">Sem comentários ainda.</div>`;
+      detalheComentarios.innerHTML = `<div class="msg err" style="display:block;margin-bottom:12px">Sem comentarios ainda.</div>`;
       return;
     }
 
@@ -1125,7 +1150,7 @@ async function loadComentarios(eventoId){
             <strong>${escapeHtml(c.autorNome || c.autorUid)}</strong>
             <span class="commentDate">${dt}</span>
             ${isMeu
-              ? `<button class="btnDeleteComment" data-comment-id="${escapeHtml(c.id)}" data-evento-id="${escapeHtml(eventoId)}">🗑️</button>`
+              ? `<button class="btnDeleteComment" data-comment-id="${escapeHtml(c.id)}" data-evento-id="${escapeHtml(eventoId)}">Excluir</button>`
               : ""}
           </div>
           <div class="commentBody">${escapeHtml(c.texto)}</div>
@@ -1137,14 +1162,14 @@ async function loadComentarios(eventoId){
     detalheComentarios.querySelectorAll(".btnDeleteComment").forEach(btn => {
       btn.addEventListener("click", async e => {
         e.stopPropagation();
-        if(!confirm("Excluir comentário?")) return;
+        if(!confirm("Excluir comentario?")) return;
         await deleteDoc(doc(db,"agenda",agendaViewUid,"eventos",btn.dataset.eventoId,"comentarios",btn.dataset.commentId));
         await loadComentarios(btn.dataset.eventoId);
       });
     });
   }catch(err){
     console.error(err);
-    detalheComentarios.innerHTML = `<div class="msg err" style="display:block">Erro ao carregar comentários.</div>`;
+    detalheComentarios.innerHTML = `<div class="msg err" style="display:block">Erro ao carregar comentarios.</div>`;
   }
 }
 
@@ -1174,7 +1199,7 @@ async function abrirModalCompartilhar(){
   const outros   = usuarios.filter(u => u.uid !== meuUid);
 
   if(outros.length === 0){
-    listaUsuariosCompartilhar.innerHTML = `<p class="hint">Nenhum outro usuário cadastrado no sistema.</p>`;
+    listaUsuariosCompartilhar.innerHTML = `<p class="hint">Nenhum outro usuario cadastrado no sistema.</p>`;
     return;
   }
 
@@ -1264,7 +1289,7 @@ modalEventoDetalhe?.addEventListener("click", e => { if(e.target === modalEvento
 btnFecharCompartilhar?.addEventListener("click", () => { if(modalCompartilhar) modalCompartilhar.style.display = "none"; });
 modalCompartilhar?.addEventListener("click", e => { if(e.target === modalCompartilhar) modalCompartilhar.style.display = "none"; });
 
-/* ================= CÂMERAS ================= */
+/* ================= CAMERAS ================= */
 
 const cameraForm        = $("cameraForm");
 const cameraEscola      = $("cameraEscola");
@@ -1294,7 +1319,7 @@ async function loadEscolasSelect(){
     escolasCacheCameras = [];
     snap.forEach(d => escolasCacheCameras.push(d.data()));
 
-    cameraEscola.innerHTML = '<option value="">— Selecione uma escola —</option>';
+    cameraEscola.innerHTML = '<option value="">- Selecione uma escola -</option>';
     escolasCacheCameras.forEach(s => {
       cameraEscola.innerHTML += `<option value="${escapeHtml(s.cie)}">${escapeHtml(s.nome)} (${escapeHtml(s.cie)})</option>`;
     });
@@ -1308,6 +1333,7 @@ async function loadCamerasList(){
   try{
     const q = query(collection(db,"cameras"), orderBy("escolaNome"));
     const snap = await getDocs(q);
+    const senhaPorCamera = new Map();
 
     const count = snap.size;
     if(cameraCount) cameraCount.textContent = `${count} DVR${count !== 1 ? 's' : ''} cadastrado${count !== 1 ? 's' : ''}`;
@@ -1315,21 +1341,23 @@ async function loadCamerasList(){
     let html = "";
     snap.forEach(d => {
       const c = { id: d.id, ...d.data() };
+      senhaPorCamera.set(c.id, c.senha || "");
+      const cameraUrl = buildCameraUrl(c.ip, c.porta);
 
       html += `
         <tr>
-          <td data-label="Escola">${escapeHtml(c.escolaNome || "—")}</td>
-          <td data-label="IP"><code>${escapeHtml(c.ip || "—")}</code></td>
-          <td data-label="Porta">${escapeHtml(c.porta || "—")}</td>
-          <td data-label="Usuário">${escapeHtml(c.usuario || "—")}</td>
+          <td data-label="Escola">${escapeHtml(c.escolaNome || " - ")}</td>
+          <td data-label="IP"><code>${escapeHtml(c.ip || " - ")}</code></td>
+          <td data-label="Porta">${escapeHtml(c.porta || " - ")}</td>
+          <td data-label="Usuario">${escapeHtml(c.usuario || " - ")}</td>
           <td data-label="Senha">
-            <span class="senhaMask">••••••</span>
-            <button class="btn btnIcon btnReveal" data-senha="${escapeHtml(c.senha || "")}" title="Mostrar senha">👁️</button>
+            <span class="senhaMask">******</span>
+            <button class="btn btnIcon btnReveal" data-senha-id="${escapeHtml(c.id)}" title="Mostrar senha">Ver</button>
           </td>
-          <td data-label="Ações">
-            <button class="btn btnAccessCamera" data-url="http://${escapeHtml(c.ip || "")}:${escapeHtml(c.porta || "")}">🌐 Acessar</button>
-            <button class="btn" data-edit-camera="${escapeHtml(c.id)}">✏️ Editar</button>
-            <button class="btn" data-del-camera="${escapeHtml(c.id)}" style="background:var(--error);color:white">🗑️ Excluir</button>
+          <td data-label="Acoes">
+            <button class="btn btnAccessCamera" data-url="${escapeHtml(cameraUrl)}">Acessar</button>
+            <button class="btn" data-edit-camera="${escapeHtml(c.id)}">Editar</button>
+            <button class="btn" data-del-camera="${escapeHtml(c.id)}" style="background:var(--error);color:white">Excluir</button>
           </td>
         </tr>`;
     });
@@ -1339,23 +1367,24 @@ async function loadCamerasList(){
     tbodyCameras.querySelectorAll(".btnAccessCamera").forEach(btn => {
       btn.addEventListener("click", () => {
         const url = btn.dataset.url;
-        if(!url || url === "http://:8080"){
-          alert("IP do DVR inválido");
+        if(!toHttpsUrlOrEmpty(url)){
+          alert("IP do DVR invalido");
           return;
         }
-        window.open(url, "_blank");
+        window.open(url, "_blank", "noopener,noreferrer");
       });
     });
 
     tbodyCameras.querySelectorAll(".btnReveal").forEach(btn => {
       btn.addEventListener("click", () => {
         const span = btn.previousElementSibling;
-        if(span.textContent === "••••••"){
-          span.textContent = btn.dataset.senha || "(vazia)";
-          btn.textContent = "🙈";
+        if(span.textContent === "******"){
+          const senha = senhaPorCamera.get(btn.dataset.senhaId) || "";
+          span.textContent = senha || "(vazia)";
+          btn.textContent = "Ocultar";
         }else{
-          span.textContent = "••••••";
-          btn.textContent = "👁️";
+          span.textContent = "******";
+          btn.textContent = "Ver";
         }
       });
     });
@@ -1381,7 +1410,7 @@ async function loadCamerasList(){
 async function preencherFormEdicao(id){
   try{
     const snap = await getDoc(doc(db,"cameras",id));
-    if(!snap.exists()) return alert("DVR não encontrado");
+    if(!snap.exists()) return alert("DVR nao encontrado");
 
     const c = snap.data();
     editandoCameraId = id;
@@ -1407,13 +1436,15 @@ cameraForm?.addEventListener("submit", async e => {
 
   const cie      = cameraEscola?.value || "";
   const ip       = (cameraIp?.value || "").trim();
-  const porta    = (cameraPorta?.value || "").trim();
+  const portaRaw = (cameraPorta?.value || "").trim();
+  const porta    = normalizePort(portaRaw);
   const usuario  = (cameraUsuario?.value || "").trim();
   const senha    = (cameraSenha?.value || "").trim();
   const obs      = (cameraObs?.value || "").trim();
 
   if(!cie) return setMsg(cameraFormMsg,"Selecione uma escola","err");
   if(!ip)  return setMsg(cameraFormMsg,"Informe o IP do DVR","err");
+  if(portaRaw && !porta) return setMsg(cameraFormMsg,"Porta invalida (1-65535)","err");
 
   const escola = escolasCacheCameras.find(s => s.cie === cie);
   const escolaNome = escola ? escola.nome : cie;
@@ -1457,162 +1488,4 @@ btnLimparCamera?.addEventListener("click", () => {
 
 btnReloadCameras?.addEventListener("click", loadCamerasList);
 
-/* ================= ACESSOS ================= */
 
-const acessoForm        = $("acessoForm");
-const acessoProcesso    = $("acessoProcesso");
-const acessoDescricao   = $("acessoDescricao");
-const acessoUsuario     = $("acessoUsuario");
-const acessoSenha       = $("acessoSenha");
-const acessoLink        = $("acessoLink");
-const acessoObs         = $("acessoObs");
-const acessoFormMsg     = $("acessoFormMsg");
-const btnLimparAcesso   = $("btnLimparAcesso");
-const btnReloadAcessos  = $("btnReloadAcessos");
-const tbodyAcessos      = $("tbodyAcessos");
-const acessoCount       = $("acessoCount");
-
-let editandoAcessoId    = null;
-
-async function loadAcessosPage(){
-  await loadAcessosList();
-}
-
-async function loadAcessosList(){
-  if(!tbodyAcessos) return;
-  try{
-    const q = query(collection(db,"acessos"), orderBy("processoLower"));
-    const snap = await getDocs(q);
-
-    const count = snap.size;
-    if(acessoCount) acessoCount.textContent = `${count} acesso${count !== 1 ? 's' : ''} cadastrado${count !== 1 ? 's' : ''}`;
-
-    let html = "";
-    snap.forEach(d => {
-      const a = { id: d.id, ...d.data() };
-      const linkHtml = a.link
-        ? `<a href="${escapeHtml(a.link)}" target="_blank" rel="noopener" class="btn btnSecondary btnSmall">🔗 Abrir</a>`
-        : "—";
-
-      html += `
-        <tr>
-          <td data-label="Processo"><strong>${escapeHtml(a.processo)}</strong></td>
-          <td data-label="Descrição">${escapeHtml(a.descricao || "—")}</td>
-          <td data-label="Usuário"><code>${escapeHtml(a.usuario || "—")}</code></td>
-          <td data-label="Senha">
-            <span class="senhaMask">••••••</span>
-            <button class="btn btnIcon btnReveal" data-senha="${escapeHtml(a.senha || "")}" title="Mostrar senha">👁️</button>
-          </td>
-          <td data-label="Link">${linkHtml}</td>
-          <td data-label="Ações">
-            <button class="btn" data-edit-acesso="${escapeHtml(a.id)}">✏️ Editar</button>
-            <button class="btn" data-del-acesso="${escapeHtml(a.id)}" style="background:var(--error);color:white">🗑️ Excluir</button>
-          </td>
-        </tr>`;
-    });
-
-    tbodyAcessos.innerHTML = html || `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum acesso cadastrado</td></tr>`;
-
-    tbodyAcessos.querySelectorAll(".btnReveal").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const span = btn.previousElementSibling;
-        if(span.textContent === "••••••"){
-          span.textContent = btn.dataset.senha || "(vazia)";
-          btn.textContent = "🙈";
-        }else{
-          span.textContent = "••••••";
-          btn.textContent = "👁️";
-        }
-      });
-    });
-
-    tbodyAcessos.querySelectorAll("[data-edit-acesso]").forEach(btn => {
-      btn.addEventListener("click", () => preencherFormAcesso(btn.dataset.editAcesso));
-    });
-
-    tbodyAcessos.querySelectorAll("[data-del-acesso]").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        if(!confirm("Excluir este acesso?")) return;
-        await deleteDoc(doc(db,"acessos",btn.dataset.delAcesso));
-        await loadAcessosList();
-      });
-    });
-
-  }catch(e){
-    console.error("loadAcessosList",e);
-    tbodyAcessos.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--error)">Erro ao carregar lista</td></tr>`;
-  }
-}
-
-async function preencherFormAcesso(id){
-  try{
-    const snap = await getDoc(doc(db,"acessos",id));
-    if(!snap.exists()) return alert("Acesso não encontrado");
-
-    const a = snap.data();
-    editandoAcessoId = id;
-
-    if(acessoProcesso)  acessoProcesso.value  = a.processo  || "";
-    if(acessoDescricao) acessoDescricao.value = a.descricao || "";
-    if(acessoUsuario)   acessoUsuario.value   = a.usuario   || "";
-    if(acessoSenha)     acessoSenha.value     = a.senha     || "";
-    if(acessoLink)      acessoLink.value      = a.link      || "";
-    if(acessoObs)       acessoObs.value       = a.obs       || "";
-
-    setMsg(acessoFormMsg,"","");
-    acessoForm?.scrollIntoView({ behavior: "smooth" });
-  }catch(e){
-    console.error(e);
-    alert("Erro ao carregar dados");
-  }
-}
-
-acessoForm?.addEventListener("submit", async e => {
-  e.preventDefault();
-  setMsg(acessoFormMsg,"","");
-
-  const processo   = (acessoProcesso?.value  || "").trim();
-  const descricao  = (acessoDescricao?.value || "").trim();
-  const usuario    = (acessoUsuario?.value   || "").trim();
-  const senha      = (acessoSenha?.value     || "").trim();
-  const link       = (acessoLink?.value      || "").trim();
-  const obs        = (acessoObs?.value       || "").trim();
-
-  if(!processo) return setMsg(acessoFormMsg,"Informe o processo/sistema","err");
-
-  const dados = {
-    processo,
-    processoLower: processo.toLowerCase(),
-    descricao,
-    usuario,
-    senha,
-    link,
-    obs,
-    atualizadoEm: Date.now(),
-    atualizadoPor: currentUid()
-  };
-
-  try{
-    if(editandoAcessoId){
-      await setDoc(doc(db,"acessos",editandoAcessoId), dados, { merge:true });
-      editandoAcessoId = null;
-    }else{
-      await addDoc(collection(db,"acessos"), dados);
-    }
-
-    acessoForm?.reset();
-    setMsg(acessoFormMsg,"Salvo com sucesso","ok");
-    await loadAcessosList();
-  }catch(err){
-    console.error(err);
-    setMsg(acessoFormMsg,"Erro ao salvar","err");
-  }
-});
-
-btnLimparAcesso?.addEventListener("click", () => {
-  acessoForm?.reset();
-  editandoAcessoId = null;
-  setMsg(acessoFormMsg,"","");
-});
-
-btnReloadAcessos?.addEventListener("click", loadAcessosList);

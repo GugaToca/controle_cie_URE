@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-br">
 <head>
 <meta charset="utf-8"/>
@@ -73,11 +73,6 @@
 
 <nav class="wrap mainTabs" role="tablist" aria-label="Navegação entre páginas">
 
-<button class="mainTab" data-page="acessos" role="tab" aria-selected="false" aria-controls="page-acessos">
-<span class="tabIcon">🔐</span>
-<span>Acessos</span>
-</button>
-
 <button class="mainTab active" data-page="sistema" role="tab" aria-selected="true" aria-controls="page-sistema">
 <span class="tabIcon">📚</span>
 <span>Sistema</span>
@@ -98,119 +93,6 @@
 </button>
 
 </nav>
-
-<!-- PÁGINA ACESSOS -->
-
-<div id="page-acessos" style="display:none" role="tabpanel" aria-labelledby="acessos-tab">
-
-  <div class="wrap">
-
-    <h2 class="pageTitle">
-      <span class="titleIcon">🔐</span>
-      Acessos — Senhas e Processos
-    </h2>
-
-    <div class="grid">
-
-      <!-- Formulário de cadastro -->
-      <section class="card cardElevated">
-        <h3 class="sectionTitle">
-          <span class="titleIcon">➕</span>
-          Cadastrar Acesso
-        </h3>
-
-        <form id="acessoForm" class="form" novalidate>
-
-          <div class="formGroup">
-            <label class="inputLabel">
-              <span class="labelText">Processo/Sistema *</span>
-              <input id="acessoProcesso" type="text" placeholder="Ex: SED, Prodes, Email institucional..." required aria-required="true">
-            </label>
-          </div>
-
-          <div class="formGroup">
-            <label class="inputLabel">
-              <span class="labelText">Descrição</span>
-              <input id="acessoDescricao" type="text" placeholder="Ex: Acesso ao sistema de diário eletrônico">
-            </label>
-          </div>
-
-          <div class="formGroup">
-            <label class="inputLabel">
-              <span class="labelText">Usuário/Login</span>
-              <input id="acessoUsuario" type="text" placeholder="Ex: usuario@exemplo.com">
-            </label>
-          </div>
-
-          <div class="formGroup">
-            <label class="inputLabel">
-              <span class="labelText">Senha</span>
-              <input id="acessoSenha" type="password" placeholder="Senha de acesso">
-            </label>
-          </div>
-
-          <div class="formGroup">
-            <label class="inputLabel">
-              <span class="labelText">Link/URL</span>
-              <input id="acessoLink" type="url" placeholder="https://...">
-            </label>
-          </div>
-
-          <div class="formGroup">
-            <label class="inputLabel">
-              <span class="labelText">Observações</span>
-              <textarea id="acessoObs" placeholder="Informações adicionais, data de expiração, etc."></textarea>
-            </label>
-          </div>
-
-          <div class="actions">
-            <button type="submit" class="btn primary btnLarge">💾 Salvar</button>
-            <button type="button" id="btnLimparAcesso" class="btn btnSecondary">🗑️ Limpar</button>
-          </div>
-
-          <div id="acessoFormMsg" class="msg" role="status" aria-live="polite"></div>
-
-        </form>
-      </section>
-
-      <!-- Lista de acessos -->
-      <section class="card cardElevated full">
-        <div class="listHeader">
-          <div class="listHeaderLeft">
-            <h3 class="sectionTitle">
-              <span class="titleIcon">🔐</span>
-              Acessos Cadastrados
-            </h3>
-            <p id="acessoCount" class="schoolCount"></p>
-          </div>
-          <button id="btnReloadAcessos" class="btn btnSecondary" aria-label="Recarregar lista">
-            <span class="btnIcon">🔄</span>
-            <span>Recarregar</span>
-          </button>
-        </div>
-
-        <div class="tableWrap">
-          <table class="modernTable" id="tabelaAcessos">
-            <thead>
-              <tr>
-                <th scope="col">Processo/Sistema</th>
-                <th scope="col">Descrição</th>
-                <th scope="col">Usuário</th>
-                <th scope="col">Senha</th>
-                <th scope="col">Link</th>
-                <th scope="col">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyAcessos"></tbody>
-          </table>
-        </div>
-      </section>
-
-    </div>
-
-  </div>
-
-</div>
 
 <!-- PÁGINA SISTEMA -->
 
