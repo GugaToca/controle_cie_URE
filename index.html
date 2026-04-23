@@ -92,6 +92,11 @@
 <span>Câmeras</span>
 </button>
 
+<button class="mainTab" data-page="tecnicos" role="tab" aria-selected="false" aria-controls="page-tecnicos">
+<span class="tabIcon">👨‍🔧</span>
+<span>Técnicos</span>
+</button>
+
 </nav>
 
 <!-- PÁGINA SISTEMA -->
@@ -615,6 +620,303 @@ Histórico de Atendimento
     <div class="actions" style="margin-top:20px">
       <button id="btnConfirmarCompartilhar" class="btn primary btnLarge">✔ Confirmar</button>
     </div>
+
+  </div>
+
+</div>
+
+<!-- PÁGINA TÉCNICOS -->
+
+<div id="page-tecnicos" style="display:none" role="tabpanel" aria-labelledby="tecnicos-tab">
+
+  <div class="wrap">
+
+    <!-- Header da página -->
+    <div class="tecnicosHeader">
+      <div class="tecnicosHeaderContent">
+        <h2 class="pageTitle">
+          <span class="titleIcon">👨‍🔧</span>
+          Controle de Visitas Técnicas
+        </h2>
+        <p class="tecnicosSubtitle">Cadastre suas escolas e registre os atendimentos realizados</p>
+      </div>
+      <button id="btnNovaEscolaTecnico" class="btn primary btnLarge">
+        <span>➕</span>
+        <span>Nova Escola</span>
+      </button>
+    </div>
+
+    <!-- Dashboard de estatísticas -->
+    <div class="tecnicosStats">
+      <div class="statCard">
+        <div class="statIcon">🏫</div>
+        <div class="statValue" id="statTotalEscolas">0</div>
+        <div class="statLabel">Minhas Escolas</div>
+      </div>
+      <div class="statCard">
+        <div class="statIcon">✅</div>
+        <div class="statValue" id="statConcluidas">0</div>
+        <div class="statLabel">Concluídas</div>
+      </div>
+      <div class="statCard">
+        <div class="statIcon">🔄</div>
+        <div class="statValue" id="statPendentes">0</div>
+        <div class="statLabel">Pendentes</div>
+      </div>
+      <div class="statCard">
+        <div class="statIcon">📅</div>
+        <div class="statValue" id="statUltimaVisita">--</div>
+        <div class="statLabel">Última Visita</div>
+      </div>
+    </div>
+
+    <!-- Filtros e busca -->
+    <div class="tecnicosFilters card cardElevated">
+      <div class="filterGroup">
+        <div class="filterItem">
+          <label class="labelText">Status</label>
+          <select id="filtroStatusTecnicos">
+            <option value="todos">Todos</option>
+            <option value="pendente">🔄 Pendente</option>
+            <option value="em_andamento">⏳ Em Andamento</option>
+            <option value="concluida">✅ Concluída</option>
+          </select>
+        </div>
+        <div class="filterItem">
+          <label class="labelText">Técnico</label>
+          <select id="filtroTecnico">
+            <option value="todos">Todos os técnicos</option>
+          </select>
+        </div>
+        <div class="filterItem filterSearch">
+          <label class="labelText">Buscar</label>
+          <input type="search" id="buscaEscolaTecnico" placeholder="Nome da escola...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de escolas em cards -->
+    <div id="listaEscolasTecnicos" class="tecnicosGrid" role="list">
+      <!-- Cards serão inseridos via JS -->
+    </div>
+
+    <!-- Estado vazio -->
+    <div id="tecnicosEmpty" class="tecnicosEmpty" style="display:none">
+      <div class="emptyIcon">🏫</div>
+      <h3>Nenhuma escola cadastrada</h3>
+      <p>Clique em "Nova Escola" para começar o controle de visitas.</p>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- MODAL CADASTRAR/EDITAR ESCOLA TÉCNICO -->
+
+<div id="modalEscolaTecnico" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEscolaTecnicoTitle">
+
+  <div class="modalContent modalLarge">
+
+    <div class="modalHeader">
+      <h3 id="modalEscolaTecnicoTitle" class="modalTitle">➕ Nova Escola</h3>
+      <button id="btnFecharModalEscolaTecnico" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="formEscolaTecnico" class="form" novalidate>
+
+      <div class="formGrid">
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Escola *</span>
+            <select id="escolaTecnicoSelect" required aria-required="true">
+              <option value="">— Selecione uma escola —</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Status *</span>
+            <select id="escolaTecnicoStatus" required aria-required="true">
+              <option value="pendente">🔄 Pendente</option>
+              <option value="em_andamento">⏳ Em Andamento</option>
+              <option value="concluida">✅ Concluída</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Prioridade</span>
+            <select id="escolaTecnicoPrioridade">
+              <option value="baixa">🟢 Baixa</option>
+              <option value="media" selected>🟡 Média</option>
+              <option value="alta">🔴 Alta</option>
+              <option value="urgente">🔴 Urgente</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Data Prevista</span>
+            <input id="escolaTecnicoDataPrevista" type="date">
+          </label>
+        </div>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Motivo/Objetivo da Visita *</span>
+          <textarea id="escolaTecnicoMotivo" rows="3" placeholder="Descreva o motivo da visita técnica..." required aria-required="true"></textarea>
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Observações</span>
+          <textarea id="escolaTecnicoObs" rows="2" placeholder="Informações adicionais..."></textarea>
+        </label>
+      </div>
+
+      <div id="escolaTecnicoFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Salvar Escola</button>
+        <button type="button" id="btnCancelarEscolaTecnico" class="btn btnSecondary">Cancelar</button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<!-- MODAL DETALHES E ATENDIMENTOS -->
+
+<div id="modalDetalhesTecnico" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalDetalhesTecnicoTitle">
+
+  <div class="modalContent modalLarge">
+
+    <div class="modalHeader">
+      <div class="modalHeaderContent">
+        <h3 id="modalDetalhesTecnicoTitle" class="modalTitle"></h3>
+        <span id="modalDetalhesTecnicoStatus" class="statusBadge"></span>
+      </div>
+      <button id="btnFecharModalDetalhes" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="detalhesContent">
+      
+      <!-- Info da escola -->
+      <div class="detalhesInfo card cardElevated">
+        <div class="infoGrid">
+          <div class="infoItem">
+            <span class="infoLabel">🏫 Escola</span>
+            <span id="detalheEscolaNome" class="infoValue"></span>
+          </div>
+          <div class="infoItem">
+            <span class="infoLabel">👤 Técnico</span>
+            <span id="detalheTecnicoNome" class="infoValue"></span>
+          </div>
+          <div class="infoItem">
+            <span class="infoLabel">📅 Data Prevista</span>
+            <span id="detalheDataPrevista" class="infoValue"></span>
+          </div>
+          <div class="infoItem">
+            <span class="infoLabel">⚡ Prioridade</span>
+            <span id="detalhePrioridade" class="infoValue"></span>
+          </div>
+        </div>
+        <div class="infoMotivo">
+          <span class="infoLabel">🎯 Motivo da Visita</span>
+          <p id="detalheMotivo"></p>
+        </div>
+      </div>
+
+      <!-- Timeline de atendimentos -->
+      <div class="atendimentosSection">
+        <div class="sectionHeader">
+          <h4>📋 Histórico de Atendimentos</h4>
+          <button id="btnNovoAtendimento" class="btn primary btnSmall">➕ Novo Atendimento</button>
+        </div>
+
+        <div id="timelineAtendimentos" class="timeline">
+          <!-- Timeline items via JS -->
+        </div>
+
+        <div id="emptyAtendimentos" class="emptyState" style="display:none">
+          <p>Nenhum atendimento registrado ainda.</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- MODAL NOVO ATENDIMENTO -->
+
+<div id="modalAtendimento" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalAtendimentoTitle">
+
+  <div class="modalContent">
+
+    <div class="modalHeader">
+      <h3 id="modalAtendimentoTitle" class="modalTitle">📋 Registrar Atendimento</h3>
+      <button id="btnFecharModalAtendimento" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="formAtendimento" class="form" novalidate>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Data do Atendimento *</span>
+          <input id="atendimentoData" type="date" required aria-required="true">
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Tipo de Atendimento *</span>
+          <select id="atendimentoTipo" required aria-required="true">
+            <option value="visita">🏃 Visita Presencial</option>
+            <option value="remoto">💻 Atendimento Remoto</option>
+            <option value="telefone">📞 Contato Telefônico</option>
+            <option value="outro">📝 Outro</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Descrição do Atendimento *</span>
+          <textarea id="atendimentoDescricao" rows="4" placeholder="Descreva detalhadamente o que foi realizado..." required aria-required="true"></textarea>
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Solução/Conclusão</span>
+          <textarea id="atendimentoSolucao" rows="3" placeholder="Descreva a solução aplicada ou conclusão do atendimento..."></textarea>
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel checkboxLabel">
+          <input id="atendimentoConcluido" type="checkbox">
+          <span>✅ Marcar como concluído</span>
+        </label>
+      </div>
+
+      <div id="atendimentoFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Salvar Atendimento</button>
+        <button type="button" id="btnCancelarAtendimento" class="btn btnSecondary">Cancelar</button>
+      </div>
+
+    </form>
 
   </div>
 

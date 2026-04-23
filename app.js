@@ -566,6 +566,9 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageCamerasEl = document.getElementById("page-cameras");
     if(pageCamerasEl) pageCamerasEl.style.display = page === "cameras" ? "block" : "none";
 
+    const pageTecnicosEl = document.getElementById("page-tecnicos");
+    if(pageTecnicosEl) pageTecnicosEl.style.display = page === "tecnicos" ? "block" : "none";
+
     if(page === "historico"){
       loadHistoricoCards();
     }
@@ -576,6 +579,10 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
 
     if(page === "cameras"){
       loadCamerasPage();
+    }
+
+    if(page === "tecnicos"){
+      loadTecnicosPage();
     }
 
   });
@@ -1487,5 +1494,570 @@ btnLimparCamera?.addEventListener("click", () => {
 });
 
 btnReloadCameras?.addEventListener("click", loadCamerasList);
+
+/* ================= TÉCNICOS - CONTROLE DE VISITAS ================= */
+
+// Referências DOM
+const btnNovaEscolaTecnico = $("btnNovaEscolaTecnico");
+const modalEscolaTecnico = $("modalEscolaTecnico");
+const formEscolaTecnico = $("formEscolaTecnico");
+const escolaTecnicoSelect = $("escolaTecnicoSelect");
+const escolaTecnicoStatus = $("escolaTecnicoStatus");
+const escolaTecnicoPrioridade = $("escolaTecnicoPrioridade");
+const escolaTecnicoDataPrevista = $("escolaTecnicoDataPrevista");
+const escolaTecnicoMotivo = $("escolaTecnicoMotivo");
+const escolaTecnicoObs = $("escolaTecnicoObs");
+const escolaTecnicoFormMsg = $("escolaTecnicoFormMsg");
+const btnFecharModalEscolaTecnico = $("btnFecharModalEscolaTecnico");
+const btnCancelarEscolaTecnico = $("btnCancelarEscolaTecnico");
+
+const modalDetalhesTecnico = $("modalDetalhesTecnico");
+const btnFecharModalDetalhes = $("btnFecharModalDetalhes");
+const btnNovoAtendimento = $("btnNovoAtendimento");
+
+const modalAtendimento = $("modalAtendimento");
+const formAtendimento = $("formAtendimento");
+const atendimentoData = $("atendimentoData");
+const atendimentoTipo = $("atendimentoTipo");
+const atendimentoDescricao = $("atendimentoDescricao");
+const atendimentoSolucao = $("atendimentoSolucao");
+const atendimentoConcluido = $("atendimentoConcluido");
+const atendimentoFormMsg = $("atendimentoFormMsg");
+const btnFecharModalAtendimento = $("btnFecharModalAtendimento");
+const btnCancelarAtendimento = $("btnCancelarAtendimento");
+
+const listaEscolasTecnicos = $("listaEscolasTecnicos");
+const tecnicosEmpty = $("tecnicosEmpty");
+const filtroStatusTecnicos = $("filtroStatusTecnicos");
+const filtroTecnico = $("filtroTecnico");
+const buscaEscolaTecnico = $("buscaEscolaTecnico");
+
+// Estado
+let editandoEscolaTecnicoId = null;
+let escolaTecnicoAtualId = null;
+let todasEscolasTecnicos = [];
+let todosUsuarios = [];
+
+// Constantes
+const STATUS_CONFIG = {
+  pendente: { label: '🔄 Pendente', cor: '#f59e0b', bg: '#fef3c7' },
+  em_andamento: { label: '⏳ Em Andamento', cor: '#3b82f6', bg: '#dbeafe' },
+  concluida: { label: '✅ Concluída', cor: '#10b981', bg: '#d1fae5' }
+};
+
+const PRIORIDADE_CONFIG = {
+  baixa: { label: '🟢 Baixa', cor: '#10b981' },
+  media: { label: '🟡 Média', cor: '#f59e0b' },
+  alta: { label: '🔴 Alta', cor: '#ef4444' },
+  urgente: { label: '🔴 Urgente', cor: '#dc2626' }
+};
+
+// Inicialização
+async function loadTecnicosPage() {
+  await carregarEscolasSelect();
+  await carregarUsuariosFiltro();
+  await carregarEscolasTecnicos();
+}
+
+async function carregarEscolasSelect() {
+  if (!escolaTecnicoSelect) return;
+  try {
+    const snap = await getDocs(query(collection(db, "escolas"), orderBy("nomeLower")));
+    escolaTecnicoSelect.innerHTML = '<option value="">— Selecione uma escola —</option>';
+    snap.forEach(d => {
+      const s = d.data();
+      escolaTecnicoSelect.innerHTML += `<option value="${escapeHtml(s.cie)}">${escapeHtml(s.nome)} (${escapeHtml(s.cie)})</option>`;
+    });
+  } catch (e) {
+    console.error("carregarEscolasSelect", e);
+  }
+}
+
+async function carregarUsuariosFiltro() {
+  if (!filtroTecnico) return;
+  try {
+    const snap = await getDocs(collection(db, "usuarios"));
+    todosUsuarios = [];
+    snap.forEach(d => todosUsuarios.push(d.data()));
+    
+    // Mantém a primeira opção e adiciona usuários
+    const primeiraOpcao = filtroTecnico.querySelector('option[value="todos"]');
+    filtroTecnico.innerHTML = '';
+    if (primeiraOpcao) filtroTecnico.appendChild(primeiraOpcao);
+    
+    todosUsuarios.forEach(u => {
+      filtroTecnico.innerHTML += `<option value="${escapeHtml(u.uid)}">${escapeHtml(u.nome || u.email)}</option>`;
+    });
+  } catch (e) {
+    console.error("carregarUsuariosFiltro", e);
+  }
+}
+
+async function carregarEscolasTecnicos() {
+  if (!listaEscolasTecnicos) return;
+  
+  try {
+    const q = query(collection(db, "tecnicos_escolas"), orderBy("dataCriacao", "desc"));
+    const snap = await getDocs(q);
+    
+    todasEscolasTecnicos = [];
+    snap.forEach(d => todasEscolasTecnicos.push({ id: d.id, ...d.data() }));
+    
+    aplicarFiltrosEExibir();
+    atualizarEstatisticas();
+  } catch (e) {
+    console.error("carregarEscolasTecnicos", e);
+  }
+}
+
+function aplicarFiltrosEExibir() {
+  const statusFiltro = filtroStatusTecnicos?.value || 'todos';
+  const tecnicoFiltro = filtroTecnico?.value || 'todos';
+  const busca = buscaEscolaTecnico?.value?.toLowerCase()?.trim() || '';
+  
+  let filtradas = todasEscolasTecnicos;
+  
+  // Filtro por status
+  if (statusFiltro !== 'todos') {
+    filtradas = filtradas.filter(e => e.status === statusFiltro);
+  }
+  
+  // Filtro por técnico
+  if (tecnicoFiltro !== 'todos') {
+    filtradas = filtradas.filter(e => e.tecnicoUid === tecnicoFiltro);
+  }
+  
+  // Filtro por busca
+  if (busca) {
+    filtradas = filtradas.filter(e => 
+      (e.escolaNome?.toLowerCase() || '').includes(busca)
+    );
+  }
+  
+  renderizarCardsEscolas(filtradas);
+}
+
+function renderizarCardsEscolas(escolas) {
+  if (escolas.length === 0) {
+    listaEscolasTecnicos.innerHTML = '';
+    if (tecnicosEmpty) tecnicosEmpty.style.display = 'flex';
+    return;
+  }
+  
+  if (tecnicosEmpty) tecnicosEmpty.style.display = 'none';
+  
+  let html = '';
+  escolas.forEach(e => {
+    const status = STATUS_CONFIG[e.status] || STATUS_CONFIG.pendente;
+    const prioridade = PRIORIDADE_CONFIG[e.prioridade] || PRIORIDADE_CONFIG.media;
+    const dataPrevista = e.dataPrevista ? new Date(e.dataPrevista).toLocaleDateString('pt-BR') : 'Não definida';
+    const tecnico = todosUsuarios.find(u => u.uid === e.tecnicoUid);
+    const nomeTecnico = tecnico ? (tecnico.nome || tecnico.email) : 'Desconhecido';
+    const isMeu = e.tecnicoUid === currentUid();
+    
+    html += `
+      <div class="tecnicoCard" data-id="${escapeHtml(e.id)}" style="border-left-color: ${prioridade.cor}">
+        <div class="cardHeader">
+          <div class="cardStatus" style="background: ${status.bg}; color: ${status.cor}">
+            ${status.label}
+          </div>
+          <div class="cardPrioridade" style="color: ${prioridade.cor}">
+            ${prioridade.label}
+          </div>
+        </div>
+        
+        <h4 class="cardTitle">${escapeHtml(e.escolaNome || 'Escola')}</h4>
+        
+        <div class="cardInfo">
+          <div class="infoRow">
+            <span class="infoIcon">👤</span>
+            <span>${escapeHtml(nomeTecnico)} ${isMeu ? '(Você)' : ''}</span>
+          </div>
+          <div class="infoRow">
+            <span class="infoIcon">📅</span>
+            <span>Previsto: ${dataPrevista}</span>
+          </div>
+          <div class="infoRow">
+            <span class="infoIcon">🎯</span>
+            <span class="motivoPreview">${escapeHtml(e.motivo?.substring(0, 50) || '')}${e.motivo?.length > 50 ? '...' : ''}</span>
+          </div>
+        </div>
+        
+        <div class="cardActions">
+          <button class="btn btnSmall btnVer" data-id="${escapeHtml(e.id)}">
+            👁️ Ver Detalhes
+          </button>
+          ${isMeu ? `
+            <button class="btn btnSmall btnEditar" data-id="${escapeHtml(e.id)}">
+              ✏️ Editar
+            </button>
+            <button class="btn btnSmall btnExcluir" data-id="${escapeHtml(e.id)}">
+              🗑️
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  listaEscolasTecnicos.innerHTML = html;
+  
+  // Event listeners
+  listaEscolasTecnicos.querySelectorAll('.btnVer').forEach(btn => {
+    btn.addEventListener('click', () => abrirDetalhesEscola(btn.dataset.id));
+  });
+  
+  listaEscolasTecnicos.querySelectorAll('.btnEditar').forEach(btn => {
+    btn.addEventListener('click', () => editarEscolaTecnico(btn.dataset.id));
+  });
+  
+  listaEscolasTecnicos.querySelectorAll('.btnExcluir').forEach(btn => {
+    btn.addEventListener('click', () => excluirEscolaTecnico(btn.dataset.id));
+  });
+}
+
+function atualizarEstatisticas() {
+  const minhasEscolas = todasEscolasTecnicos.filter(e => e.tecnicoUid === currentUid());
+  const concluidas = minhasEscolas.filter(e => e.status === 'concluida').length;
+  const pendentes = minhasEscolas.filter(e => e.status === 'pendente' || e.status === 'em_andamento').length;
+  
+  // Última visita (data do último atendimento)
+  let ultimaVisita = '--';
+  const atendimentos = minhasEscolas.flatMap(e => e.atendimentos || []);
+  if (atendimentos.length > 0) {
+    const datas = atendimentos.map(a => new Date(a.data)).filter(d => !isNaN(d));
+    if (datas.length > 0) {
+      const maisRecente = new Date(Math.max(...datas));
+      ultimaVisita = maisRecente.toLocaleDateString('pt-BR');
+    }
+  }
+  
+  const statTotalEscolas = $("statTotalEscolas");
+  const statConcluidas = $("statConcluidas");
+  const statPendentes = $("statPendentes");
+  const statUltimaVisita = $("statUltimaVisita");
+  
+  if (statTotalEscolas) statTotalEscolas.textContent = minhasEscolas.length;
+  if (statConcluidas) statConcluidas.textContent = concluidas;
+  if (statPendentes) statPendentes.textContent = pendentes;
+  if (statUltimaVisita) statUltimaVisita.textContent = ultimaVisita;
+}
+
+// Modal Cadastrar/Editar Escola
+btnNovaEscolaTecnico?.addEventListener('click', () => {
+  editandoEscolaTecnicoId = null;
+  formEscolaTecnico?.reset();
+  if (escolaTecnicoDataPrevista) escolaTecnicoDataPrevista.value = new Date().toISOString().split('T')[0];
+  const titleEl = $("modalEscolaTecnicoTitle");
+  if (titleEl) titleEl.textContent = '➕ Nova Escola';
+  setMsg(escolaTecnicoFormMsg, '', '');
+  if (modalEscolaTecnico) modalEscolaTecnico.style.display = 'flex';
+});
+
+btnFecharModalEscolaTecnico?.addEventListener('click', () => {
+  if (modalEscolaTecnico) modalEscolaTecnico.style.display = 'none';
+});
+
+btnCancelarEscolaTecnico?.addEventListener('click', () => {
+  if (modalEscolaTecnico) modalEscolaTecnico.style.display = 'none';
+});
+
+formEscolaTecnico?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setMsg(escolaTecnicoFormMsg, '', '');
+  
+  const cie = escolaTecnicoSelect?.value;
+  const status = escolaTecnicoStatus?.value;
+  const prioridade = escolaTecnicoPrioridade?.value;
+  const dataPrevista = escolaTecnicoDataPrevista?.value;
+  const motivo = (escolaTecnicoMotivo?.value || '').trim();
+  const obs = (escolaTecnicoObs?.value || '').trim();
+  
+  if (!cie) return setMsg(escolaTecnicoFormMsg, 'Selecione uma escola', 'err');
+  if (!motivo) return setMsg(escolaTecnicoFormMsg, 'Informe o motivo da visita', 'err');
+  
+  // Buscar nome da escola
+  const escolaSnap = await getDoc(doc(db, "escolas", cie));
+  const escolaNome = escolaSnap.exists() ? escolaSnap.data().nome : cie;
+  
+  const dados = {
+    cie,
+    escolaNome,
+    status,
+    prioridade,
+    dataPrevista: dataPrevista || null,
+    motivo,
+    observacoes: obs,
+    tecnicoUid: currentUid(),
+    tecnicoNome: getUserFirstName(),
+    dataCriacao: Date.now(),
+    dataAtualizacao: Date.now(),
+    atendimentos: []
+  };
+  
+  try {
+    if (editandoEscolaTecnicoId) {
+      await setDoc(doc(db, "tecnicos_escolas", editandoEscolaTecnicoId), { ...dados, dataCriacao: undefined }, { merge: true });
+    } else {
+      await addDoc(collection(db, "tecnicos_escolas"), dados);
+    }
+    
+    if (modalEscolaTecnico) modalEscolaTecnico.style.display = 'none';
+    await carregarEscolasTecnicos();
+  } catch (err) {
+    console.error(err);
+    setMsg(escolaTecnicoFormMsg, 'Erro ao salvar', 'err');
+  }
+});
+
+async function editarEscolaTecnico(id) {
+  const escola = todasEscolasTecnicos.find(e => e.id === id);
+  if (!escola) return;
+  if (escola.tecnicoUid !== currentUid()) {
+    alert('Você só pode editar suas próprias escolas');
+    return;
+  }
+  
+  editandoEscolaTecnicoId = id;
+  if (escolaTecnicoSelect) escolaTecnicoSelect.value = escola.cie;
+  if (escolaTecnicoStatus) escolaTecnicoStatus.value = escola.status;
+  if (escolaTecnicoPrioridade) escolaTecnicoPrioridade.value = escola.prioridade;
+  if (escolaTecnicoDataPrevista) escolaTecnicoDataPrevista.value = escola.dataPrevista || '';
+  if (escolaTecnicoMotivo) escolaTecnicoMotivo.value = escola.motivo || '';
+  if (escolaTecnicoObs) escolaTecnicoObs.value = escola.observacoes || '';
+  
+  const titleEl = $("modalEscolaTecnicoTitle");
+  if (titleEl) titleEl.textContent = '✏️ Editar Escola';
+  setMsg(escolaTecnicoFormMsg, '', '');
+  if (modalEscolaTecnico) modalEscolaTecnico.style.display = 'flex';
+}
+
+async function excluirEscolaTecnico(id) {
+  const escola = todasEscolasTecnicos.find(e => e.id === id);
+  if (!escola) return;
+  if (escola.tecnicoUid !== currentUid()) {
+    alert('Você só pode excluir suas próprias escolas');
+    return;
+  }
+  
+  if (!confirm('Tem certeza que deseja excluir esta escola?\nTodos os atendimentos serão perdidos.')) return;
+  
+  try {
+    await deleteDoc(doc(db, "tecnicos_escolas", id));
+    await carregarEscolasTecnicos();
+  } catch (err) {
+    console.error(err);
+    alert('Erro ao excluir');
+  }
+}
+
+// Modal Detalhes
+async function abrirDetalhesEscola(id) {
+  const escola = todasEscolasTecnicos.find(e => e.id === id);
+  if (!escola) return;
+  
+  escolaTecnicoAtualId = id;
+  
+  // Preencher informações
+  const status = STATUS_CONFIG[escola.status] || STATUS_CONFIG.pendente;
+  const prioridade = PRIORIDADE_CONFIG[escola.prioridade] || PRIORIDADE_CONFIG.media;
+  const tecnico = todosUsuarios.find(u => u.uid === escola.tecnicoUid);
+  const nomeTecnico = tecnico ? (tecnico.nome || tecnico.email) : 'Desconhecido';
+  
+  const titleEl = $("modalDetalhesTecnicoTitle");
+  const statusEl = $("modalDetalhesTecnicoStatus");
+  const escolaNomeEl = $("detalheEscolaNome");
+  const tecnicoNomeEl = $("detalheTecnicoNome");
+  const dataPrevistaEl = $("detalheDataPrevista");
+  const prioridadeEl = $("detalhePrioridade");
+  const motivoEl = $("detalheMotivo");
+  
+  if (titleEl) titleEl.textContent = escola.escolaNome;
+  if (statusEl) {
+    statusEl.textContent = status.label;
+    statusEl.style.background = status.bg;
+    statusEl.style.color = status.cor;
+  }
+  if (escolaNomeEl) escolaNomeEl.textContent = escola.escolaNome;
+  if (tecnicoNomeEl) tecnicoNomeEl.textContent = nomeTecnico;
+  if (dataPrevistaEl) dataPrevistaEl.textContent = escola.dataPrevista ? new Date(escola.dataPrevista).toLocaleDateString('pt-BR') : 'Não definida';
+  if (prioridadeEl) {
+    prioridadeEl.textContent = prioridade.label;
+    prioridadeEl.style.color = prioridade.cor;
+  }
+  if (motivoEl) motivoEl.textContent = escola.motivo;
+  
+  // Renderizar timeline de atendimentos
+  renderizarTimelineAtendimentos(escola.atendimentos || []);
+  
+  // Mostrar/esconder botão de novo atendimento
+  const isMeu = escola.tecnicoUid === currentUid();
+  if (btnNovoAtendimento) btnNovoAtendimento.style.display = isMeu ? 'inline-flex' : 'none';
+  
+  if (modalDetalhesTecnico) modalDetalhesTecnico.style.display = 'flex';
+}
+
+function renderizarTimelineAtendimentos(atendimentos) {
+  const timelineEl = $("timelineAtendimentos");
+  const emptyEl = $("emptyAtendimentos");
+  
+  if (!timelineEl) return;
+  
+  if (atendimentos.length === 0) {
+    timelineEl.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  
+  if (emptyEl) emptyEl.style.display = 'none';
+  
+  // Ordenar por data (mais recente primeiro)
+  const ordenados = [...atendimentos].sort((a, b) => new Date(b.data) - new Date(a.data));
+  
+  let html = '';
+  ordenados.forEach((a, index) => {
+    const data = new Date(a.data).toLocaleDateString('pt-BR');
+    const tipoIcon = {
+      visita: '🏃',
+      remoto: '💻',
+      telefone: '📞',
+      outro: '📝'
+    }[a.tipo] || '📝';
+    
+    const isLast = index === ordenados.length - 1;
+    
+    html += `
+      <div class="timelineItem">
+        <div class="timelineMarker">
+          <div class="timelineDot"></div>
+          ${!isLast ? '<div class="timelineLine"></div>' : ''}
+        </div>
+        <div class="timelineContent">
+          <div class="timelineHeader">
+            <span class="timelineDate">${data}</span>
+            <span class="timelineTipo">${tipoIcon} ${escapeHtml(a.tipoLabel || a.tipo)}</span>
+            ${a.concluido ? '<span class="timelineConcluido">✅ Concluído</span>' : ''}
+          </div>
+          <div class="timelineDescricao">
+            <p><strong>Descrição:</strong> ${escapeHtml(a.descricao)}</p>
+            ${a.solucao ? `<p><strong>Solução:</strong> ${escapeHtml(a.solucao)}</p>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  timelineEl.innerHTML = html;
+}
+
+btnFecharModalDetalhes?.addEventListener('click', () => {
+  if (modalDetalhesTecnico) modalDetalhesTecnico.style.display = 'none';
+  escolaTecnicoAtualId = null;
+});
+
+// Modal Novo Atendimento
+btnNovoAtendimento?.addEventListener('click', () => {
+  formAtendimento?.reset();
+  if (atendimentoData) atendimentoData.value = new Date().toISOString().split('T')[0];
+  setMsg(atendimentoFormMsg, '', '');
+  if (modalAtendimento) modalAtendimento.style.display = 'flex';
+});
+
+btnFecharModalAtendimento?.addEventListener('click', () => {
+  if (modalAtendimento) modalAtendimento.style.display = 'none';
+});
+
+btnCancelarAtendimento?.addEventListener('click', () => {
+  if (modalAtendimento) modalAtendimento.style.display = 'none';
+});
+
+formAtendimento?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setMsg(atendimentoFormMsg, '', '');
+  
+  if (!escolaTecnicoAtualId) return;
+  
+  const data = atendimentoData?.value;
+  const tipo = atendimentoTipo?.value;
+  const descricao = (atendimentoDescricao?.value || '').trim();
+  const solucao = (atendimentoSolucao?.value || '').trim();
+  const concluido = atendimentoConcluido?.checked || false;
+  
+  if (!data) return setMsg(atendimentoFormMsg, 'Informe a data do atendimento', 'err');
+  if (!descricao) return setMsg(atendimentoFormMsg, 'Descreva o atendimento realizado', 'err');
+  
+  const tipoLabels = {
+    visita: 'Visita Presencial',
+    remoto: 'Atendimento Remoto',
+    telefone: 'Contato Telefônico',
+    outro: 'Outro'
+  };
+  
+  const novoAtendimento = {
+    id: Date.now().toString(),
+    data,
+    tipo,
+    tipoLabel: tipoLabels[tipo],
+    descricao,
+    solucao,
+    concluido,
+    tecnicoUid: currentUid(),
+    tecnicoNome: getUserFirstName(),
+    dataCriacao: Date.now()
+  };
+  
+  try {
+    const escolaRef = doc(db, "tecnicos_escolas", escolaTecnicoAtualId);
+    const escolaSnap = await getDoc(escolaRef);
+    
+    if (!escolaSnap.exists()) {
+      setMsg(atendimentoFormMsg, 'Escola não encontrada', 'err');
+      return;
+    }
+    
+    const escolaData = escolaSnap.data();
+    const atendimentos = escolaData.atendimentos || [];
+    atendimentos.push(novoAtendimento);
+    
+    // Se marcou como concluído, atualiza o status da escola
+    const updates = { 
+      atendimentos, 
+      dataAtualizacao: Date.now() 
+    };
+    if (concluido) {
+      updates.status = 'concluida';
+    }
+    
+    await setDoc(escolaRef, updates, { merge: true });
+    
+    if (modalAtendimento) modalAtendimento.style.display = 'none';
+    
+    // Recarregar dados e atualizar view
+    await carregarEscolasTecnicos();
+    await abrirDetalhesEscola(escolaTecnicoAtualId);
+  } catch (err) {
+    console.error(err);
+    setMsg(atendimentoFormMsg, 'Erro ao salvar atendimento', 'err');
+  }
+});
+
+// Filtros
+filtroStatusTecnicos?.addEventListener('change', aplicarFiltrosEExibir);
+filtroTecnico?.addEventListener('change', aplicarFiltrosEExibir);
+buscaEscolaTecnico?.addEventListener('input', aplicarFiltrosEExibir);
+
+// Fechar modais ao clicar fora
+modalEscolaTecnico?.addEventListener('click', e => {
+  if (e.target === modalEscolaTecnico) modalEscolaTecnico.style.display = 'none';
+});
+modalDetalhesTecnico?.addEventListener('click', e => {
+  if (e.target === modalDetalhesTecnico) {
+    modalDetalhesTecnico.style.display = 'none';
+    escolaTecnicoAtualId = null;
+  }
+});
+modalAtendimento?.addEventListener('click', e => {
+  if (e.target === modalAtendimento) modalAtendimento.style.display = 'none';
+});
 
 
