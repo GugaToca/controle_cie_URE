@@ -2260,19 +2260,3 @@ async function removerVinculoEscola(id) {
   }
 }
 
-//Remover Vínculo
-async function removerVinculoEscola(id) {
-  if  (!confirm('remover o vinculo desta escola com o técnico?')) return;
-
-  try {
-    await deleteDoc(doc(db, "escolas_tecnicos", id));
-    if (tecnicoGerenciarEscolas) {
-      await carregarEscolasVinculadas(tecnicoGerenciandoEscolas);
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Erro ao remover vínculo');
-
-  }
-}
-
