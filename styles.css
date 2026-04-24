@@ -2438,6 +2438,7 @@ body.dark .modernTable td code {
 /* Barra de guias (estilo Chrome) */
 .tecnicosTabsBar {
   display: flex;
+  justify-content: center;
   gap: 4px;
   padding: 8px 24px 0;
   background: var(--bg);
@@ -2608,6 +2609,10 @@ body.dark .modernTable td code {
 
 /* Responsivo */
 @media (max-width: 768px) {
+  .tecnicosTabsBar {
+    justify-content: flex-start;
+  }
+
   .tecnicoTabHeader {
     flex-direction: column;
     align-items: stretch;
