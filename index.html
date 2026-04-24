@@ -97,110 +97,65 @@
 <span>Técnicos</span>
 </button>
 
+<button class="mainTab" data-page="cadastrar-escolas" role="tab" aria-selected="false" aria-controls="page-cadastrar-escolas">
+<span class="tabIcon">➕</span>
+<span>Cadastrar Escolas</span>
+</button>
+
 </nav>
 
 <!-- PÁGINA SISTEMA -->
 
-<div id="page-sistema" role="tabpanel" aria-labelledby="sistema-tab">
+<div id="page-sistema" style="display:block" role="tabpanel" aria-labelledby="sistema-tab">
 
-<main class="wrap grid">
+<div class="wrap">
 
-<section class="card cardElevated">
+  <!-- Busca Compacta -->
+  <section class="card cardElevated searchCardCompact">
 
-<h2 class="sectionTitle">
-<span class="titleIcon">✏️</span>
-Cadastrar / Atualizar
-</h2>
+    <div class="searchCompactHeader">
+      <h2 class="sectionTitleCompact">
+        <span class="titleIcon">🔍</span>
+        Buscar Escola
+      </h2>
+    </div>
 
-<form id="schoolForm" class="form" novalidate>
+    <div class="tabs tabsCompact" role="tablist">
+      <button class="tab active" data-tab="cie" role="tab" aria-selected="true">🔢 CIE</button>
+      <button class="tab" data-tab="nome" role="tab" aria-selected="false">🏫 Nome</button>
+    </div>
 
-<div class="row">
+    <div id="tab-cie" class="tabpanel active" role="tabpanel">
 
-<label class="inputLabel">
-<span class="labelText">CIE (somente números)</span>
-<input id="cie" type="text" inputmode="numeric" placeholder="Ex: 123456" required aria-required="true">
-</label>
+      <div class="searchCompactInput">
+        <input id="searchCie" type="text" inputmode="numeric" placeholder="Digite o CIE" aria-label="Buscar por CIE">
+        <button id="btnSearchCie" class="btn primary">🔍</button>
+      </div>
 
-<label class="inputLabel">
-<span class="labelText">Nome da escola</span>
-<input id="nome" type="text" placeholder="Ex: EE Prof. João da Silva" required aria-required="true">
-</label>
+    </div>
 
-</div>
+    <div id="tab-nome" class="tabpanel" role="tabpanel">
 
-<div class="row">
+      <div class="searchCompactInput">
+        <input id="searchNome" type="text" placeholder="Nome ou município" aria-label="Buscar por nome ou município">
+        <button id="btnSearchNome" class="btn primary">🔍</button>
+      </div>
 
-<label class="inputLabel">
-<span class="labelText">URE</span>
-<input id="ure" type="text" value="São José do Rio Preto" aria-label="Unidade Regional de Ensino">
-</label>
+    </div>
 
-<label class="inputLabel">
-<span class="labelText">Município</span>
-<input id="municipio" type="text" placeholder="Ex: São José do Rio Preto" aria-label="Município da escola">
-</label>
+  </section>
 
-</div>
+  <!-- Lista de Escolas -->
+  <section class="card cardElevated full">
 
-<div class="actions">
-<button type="submit" class="btn primary btnLarge">💾 Salvar</button>
-<button type="button" id="btnClear" class="btn btnSecondary">🗑️ Limpar</button>
-</div>
+    <div class="listHeader">
 
-<div id="formMsg" class="msg" role="status" aria-live="polite"></div>
-
-</form>
-
-</section>
-
-<section class="card cardElevated">
-
-<h2 class="sectionTitle">
-<span class="titleIcon">🔍</span>
-Busca
-</h2>
-
-<div class="tabs" role="tablist">
-<button class="tab active" data-tab="cie" role="tab" aria-selected="true">🔢 Buscar por CIE</button>
-<button class="tab" data-tab="nome" role="tab" aria-selected="false">🏫 Buscar por Nome</button>
-</div>
-
-<div id="tab-cie" class="tabpanel active" role="tabpanel">
-
-<label class="inputLabel">
-<span class="labelText">Digite o CIE</span>
-<input id="searchCie" type="text" inputmode="numeric" placeholder="Digite o número do CIE" aria-label="Buscar por CIE">
-</label>
-
-<button id="btnSearchCie" class="btn primary btnBlock">🔍 Buscar</button>
-
-</div>
-
-<div id="tab-nome" class="tabpanel" role="tabpanel">
-
-<label class="inputLabel">
-<span class="labelText">Digite parte do nome ou município</span>
-<input id="searchNome" type="text" placeholder="Digite nome ou município" aria-label="Buscar por nome ou município">
-</label>
-
-<button id="btnSearchNome" class="btn primary btnBlock">🔍 Buscar</button>
-
-</div>
-
-<div id="result" class="result" role="region" aria-live="polite"></div>
-
-</section>
-
-<section class="card cardElevated full">
-
-<div class="listHeader">
-
-<div class="listHeaderLeft">
-<h2 class="sectionTitle">
-<span class="titleIcon">📋</span>
-Lista de Escolas
-</h2>
-<p id="schoolCount" class="schoolCount"></p>
+      <div class="listHeaderLeft">
+        <h2 class="sectionTitle">
+          <span class="titleIcon">📋</span>
+          Lista de Escolas
+        </h2>
+        <p id="schoolCount" class="schoolCount"></p>
 </div>
 
 <button id="btnReload" class="btn btnSecondary" aria-label="Recarregar lista de escolas">
@@ -212,14 +167,13 @@ Lista de Escolas
 
 <div class="tableWrap">
 
-<table class="modernTable">
+<table class="modernTable" id="schoolsTable">
 
 <thead>
 <tr>
 <th scope="col">Escola</th>
 <th scope="col">CIE</th>
 <th scope="col">Município</th>
-<th scope="col">URE</th>
 <th scope="col">Ações</th>
 </tr>
 </thead>
@@ -253,9 +207,7 @@ Importar em massa
 <div id="bulkMsg" class="msg" role="status" aria-live="polite"></div>
 </div>
 
-</section>
-
-</main>
+</div>
 
 </div>
 
@@ -291,8 +243,6 @@ Histórico de Atendimento
 
 </div>
 
-</div>
-
 <!-- MODAL HISTÓRICO -->
 
 <div id="modalHistorico" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalSchool">
@@ -311,6 +261,8 @@ Histórico de Atendimento
 <textarea id="historicoTexto" placeholder="Descreva o atendimento realizado" aria-label="Nova anotação de atendimento"></textarea>
 
 <button type="button" id="btnSalvarHistorico" class="btn primary btnLarge btnBlock">💾 Salvar anotação</button>
+</div>
+
 </div>
 
 </div>
@@ -1163,6 +1115,174 @@ Histórico de Atendimento
     </form>
 
   </div>
+
+</div>
+
+<!-- PÁGINA CADASTRAR ESCOLAS -->
+
+<div id="page-cadastrar-escolas" style="display:none" role="tabpanel" aria-labelledby="cadastrar-escolas-tab">
+
+  <div class="wrap">
+
+    <div class="sistemaHeader">
+      <div class="sistemaHeaderContent">
+        <h2 class="pageTitle">
+          <span class="titleIcon">➕</span>
+          Cadastrar Escolas
+        </h2>
+        <p class="sistemaSubtitle">Adicione novas escolas ao sistema</p>
+      </div>
+    </div>
+
+    <!-- Formulário de Cadastro -->
+    <section class="card cardElevated full">
+
+      <h3 class="sectionTitle">
+        <span class="titleIcon">🏫</span>
+        Dados da Escola
+      </h3>
+
+      <form id="schoolFormPage" class="form" novalidate>
+
+        <div class="formGrid">
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">CIE (somente números) *</span>
+              <input id="ciePage" type="text" inputmode="numeric" placeholder="Ex: 123456" required aria-required="true">
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">Nome da escola *</span>
+              <input id="nomePage" type="text" placeholder="Ex: EE Prof. João da Silva" required aria-required="true">
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">URE</span>
+              <input id="urePage" type="text" value="São José do Rio Preto" aria-label="Unidade Regional de Ensino">
+            </label>
+          </div>
+
+          <div class="formGroup">
+            <label class="inputLabel">
+              <span class="labelText">Município *</span>
+              <input id="municipioPage" type="text" placeholder="Ex: São José do Rio Preto" required aria-required="true">
+            </label>
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top: 24px;">
+          <button type="submit" class="btn primary btnLarge">💾 Salvar Escola</button>
+          <button type="button" id="btnClearPage" class="btn btnSecondary">🗑️ Limpar</button>
+        </div>
+
+        <div id="formMsgPage" class="msg" role="status" aria-live="polite"></div>
+
+      </form>
+
+    </section>
+
+    <!-- Importação em Massa -->
+    <section class="card cardElevated full">
+
+      <h3 class="sectionTitle">
+        <span class="titleIcon">📥</span>
+        Importar em Massa
+      </h3>
+
+      <div class="bulkInfo">
+        <p class="hint">
+          <strong>Formato:</strong> NOME DA ESCOLA ; CIE ; MUNICÍPIO
+        </p>
+        <p class="hintExample">Exemplo: EE Maria Silva ; 123456 ; São José do Rio Preto</p>
+      </div>
+
+      <textarea id="bulkPage" rows="6" placeholder="Cole aqui os dados das escolas (uma por linha)" aria-label="Área de importação em massa"></textarea>
+
+      <div class="actions" style="margin-top: 16px;">
+        <button id="btnBulkPage" class="btn primary btnLarge">📥 Importar Escolas</button>
+        <div id="bulkMsgPage" class="msg" role="status" aria-live="polite"></div>
+      </div>
+
+    </section>
+
+  </div>
+
+</div>
+
+<!-- MODAL CADASTRAR NOVA ESCOLA (mantido para compatibilidade) -->
+
+<div id="modalNovaEscolaSistema" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalNovaEscolaSistemaTitle">
+
+  <div class="modalContent">
+
+    <div class="modalHeader">
+      <h3 id="modalNovaEscolaSistemaTitle" class="modalTitle">➕ Nova Escola</h3>
+      <button id="btnFecharModalNovaEscola" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="schoolForm" class="form" novalidate>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">CIE (somente números) *</span>
+          <input id="cie" type="text" inputmode="numeric" placeholder="Ex: 123456" required aria-required="true">
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Nome da escola *</span>
+          <input id="nome" type="text" placeholder="Ex: EE Prof. João da Silva" required aria-required="true">
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">URE</span>
+          <input id="ure" type="text" value="São José do Rio Preto" aria-label="Unidade Regional de Ensino">
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Município *</span>
+          <input id="municipio" type="text" placeholder="Ex: São José do Rio Preto" required aria-required="true">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Salvar</button>
+        <button type="button" id="btnClear" class="btn btnSecondary">🗑️ Limpar</button>
+      </div>
+
+      <div id="formMsg" class="msg" role="status" aria-live="polite"></div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<!-- MODAL RESULTADO DA PESQUISA -->
+
+<div id="modalResultadoBusca" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalResultadoBuscaTitle">
+
+  <div class="modalContent modalContentCompact">
+
+    <div class="modalHeader">
+      <h3 id="modalResultadoBuscaTitle" class="modalTitle">🔍 Resultado da Busca</h3>
+      <button id="btnFecharModalResultado" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <div id="result" class="resultModal" role="region" aria-live="polite"></div>
+
+  </div>
+
+</div>
 
 </div>
 

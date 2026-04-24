@@ -64,6 +64,7 @@ const municipioEl = $("municipio");
 const formMsg = $("formMsg");
 
 const tbody = $("tbody");
+const schoolsTable = $("schoolsTable");
 const btnReload = $("btnReload");
 const btnClear = $("btnClear");
 
@@ -83,6 +84,18 @@ const toggleDark = $("toggleDark");
 
 const userDisplay = $("userDisplay");
 
+/* página cadastrar escolas */
+const formPage = $("schoolFormPage");
+const ciePageEl = $("ciePage");
+const nomePageEl = $("nomePage");
+const urePageEl = $("urePage");
+const municipioPageEl = $("municipioPage");
+const formMsgPage = $("formMsgPage");
+const btnClearPage = $("btnClearPage");
+const bulkPage = $("bulkPage");
+const btnBulkPage = $("btnBulkPage");
+const bulkMsgPage = $("bulkMsgPage");
+
 /* historico (novo) */
 const cardsHistorico = $("cardsHistorico");
 const modalHistorico = $("modalHistorico");
@@ -96,6 +109,8 @@ const searchHistorico = $("searchHistorico");
 let currentCIE = null;
 let historicoEscolas = [];
 let escolasCache = [];
+const SCHOOL_TABLE_WIDTHS_KEY = "schoolsTableWidths_v1";
+let schoolTableResizersReady = false;
 
 /* ================= HELPERS ================= */
 
@@ -163,6 +178,134 @@ function buildCameraUrl(ip, porta){
   if(!host) return "";
   const safePort = normalizePort(porta);
   return `http://${host}${safePort ? ":" + safePort : ""}`;
+}
+
+function clampSchoolColWidth(index, width){
+  const minByCol = [220, 100, 150, 170];
+  const min = minByCol[index] || 100;
+  return Math.max(min, Math.round(width || min));
+}
+
+function getSavedSchoolColWidths(expectedLength){
+  try{
+    const raw = localStorage.getItem(SCHOOL_TABLE_WIDTHS_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed) || parsed.length !== expectedLength) return null;
+    return parsed.map((width, index) => clampSchoolColWidth(index, Number(width)));
+  }catch{
+    return null;
+  }
+}
+
+function saveSchoolColWidths(widths){
+  try{
+    localStorage.setItem(SCHOOL_TABLE_WIDTHS_KEY, JSON.stringify(widths));
+  }catch{
+    // Sem armazenamento disponível: mantém só na sessão atual.
+  }
+}
+
+function applySchoolColWidths(cols, widths){
+  if(!schoolsTable) return;
+
+  const safeWidths = widths.map((width, index) => clampSchoolColWidth(index, width));
+  cols.forEach((col, index) => {
+    col.style.width = `${safeWidths[index]}px`;
+  });
+
+  const totalWidth = safeWidths.reduce((acc, width) => acc + width, 0);
+  schoolsTable.style.minWidth = `${totalWidth}px`;
+}
+
+function setupSchoolTableResizers(){
+  if(!schoolsTable || schoolTableResizersReady) return;
+
+  const headers = Array.from(schoolsTable.querySelectorAll("thead th"));
+  if(headers.length === 0) return;
+
+  schoolsTable.classList.add("resizableTable");
+
+  let colgroup = schoolsTable.querySelector('colgroup[data-school-cols="1"]');
+  if(!colgroup){
+    colgroup = document.createElement("colgroup");
+    colgroup.dataset.schoolCols = "1";
+    schoolsTable.prepend(colgroup);
+  }
+
+  if(colgroup.children.length !== headers.length){
+    colgroup.innerHTML = "";
+    headers.forEach(() => {
+      colgroup.appendChild(document.createElement("col"));
+    });
+  }
+
+  const cols = Array.from(colgroup.children);
+  const measuredWidths = headers.map((th, index) =>
+    clampSchoolColWidth(index, th.getBoundingClientRect().width || th.offsetWidth || 140)
+  );
+  const savedWidths = getSavedSchoolColWidths(headers.length);
+  applySchoolColWidths(cols, savedWidths || measuredWidths);
+
+  headers.forEach((th, index) => {
+    const isLast = index === headers.length - 1;
+    const existingHandle = th.querySelector(":scope > .colResizer");
+
+    if(isLast){
+      existingHandle?.remove();
+      return;
+    }
+
+    const handle = existingHandle || document.createElement("button");
+    if(!existingHandle){
+      handle.type = "button";
+      handle.className = "colResizer";
+      handle.setAttribute("aria-label", `Redimensionar coluna ${th.textContent.trim()}`);
+      th.appendChild(handle);
+    }
+
+    handle.onpointerdown = (event) => {
+      if(event.button !== 0 && event.pointerType !== "touch" && event.pointerType !== "pen") return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const startX = event.clientX;
+      const startWidths = cols.map((col, colIndex) =>
+        clampSchoolColWidth(colIndex, col.getBoundingClientRect().width || headers[colIndex].offsetWidth || 120)
+      );
+
+      handle.classList.add("isDragging");
+      document.body.classList.add("colResizeActive");
+
+      const onMove = (moveEvent) => {
+        const delta = moveEvent.clientX - startX;
+        const nextWidths = [...startWidths];
+        nextWidths[index] = clampSchoolColWidth(index, startWidths[index] + delta);
+        applySchoolColWidths(cols, nextWidths);
+      };
+
+      const onStop = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onStop);
+        window.removeEventListener("pointercancel", onStop);
+
+        handle.classList.remove("isDragging");
+        document.body.classList.remove("colResizeActive");
+
+        const finalWidths = cols.map((col, colIndex) =>
+          clampSchoolColWidth(colIndex, col.getBoundingClientRect().width || headers[colIndex].offsetWidth || 120)
+        );
+        saveSchoolColWidths(finalWidths);
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onStop);
+      window.addEventListener("pointercancel", onStop);
+    };
+  });
+
+  schoolTableResizersReady = true;
 }
 
 function currentUid(){
@@ -294,6 +437,112 @@ btnClear?.addEventListener("click", ()=>{
 
 });
 
+/* ================= PÁGINA CADASTRAR ESCOLAS ================= */
+
+formPage?.addEventListener("submit", async (e)=>{
+
+  e.preventDefault();
+
+  setMsg(formMsgPage,"","");
+
+  const cie = onlyDigits(ciePageEl?.value);
+  const nome = normalizeName(nomePageEl?.value);
+  const ure = normalizeName(urePageEl?.value) || "Sao Jose do Rio Preto";
+  const municipio = normalizeName(municipioPageEl?.value);
+
+  if(!cie) return setMsg(formMsgPage,"CIE invalido","err");
+  if(!nome) return setMsg(formMsgPage,"Nome invalido","err");
+
+  const ref = schoolDocRef(cie);
+  const now = Date.now();
+
+  await setDoc(ref,{
+    cie,
+    nome,
+    nomeLower: nome.toLowerCase(),
+    municipio,
+    ure,
+    updatedAt: now,
+    updatedBy: currentUid()
+  }, { merge:true });
+
+  setMsg(formMsgPage,"Escola cadastrada com sucesso!","ok");
+
+  if(ciePageEl) ciePageEl.value = "";
+  if(nomePageEl) nomePageEl.value = "";
+  if(municipioPageEl) municipioPageEl.value = "";
+  if(ciePageEl) ciePageEl.focus();
+
+  loadList();
+
+});
+
+btnClearPage?.addEventListener("click", ()=>{
+  if(ciePageEl) ciePageEl.value = "";
+  if(nomePageEl) nomePageEl.value = "";
+  if(municipioPageEl) municipioPageEl.value = "";
+  if(ciePageEl) ciePageEl.focus();
+});
+
+btnBulkPage?.addEventListener("click", async ()=>{
+
+  const text = (bulkPage?.value || "").trim();
+
+  if(!text) return;
+
+  setMsg(bulkMsgPage,"","");
+
+  const lines = text.split(/\n/).map(l => l.trim()).filter(l => l);
+
+  let ok = 0;
+  let err = 0;
+
+  for(const line of lines){
+
+    const parts = line.split(";").map(p => p.trim());
+
+    if(parts.length < 3){
+      err++;
+      continue;
+    }
+
+    const [nomeRaw, cieRaw, municipioRaw] = parts;
+
+    const nome = normalizeName(nomeRaw);
+    const cie = onlyDigits(cieRaw);
+    const municipio = normalizeName(municipioRaw);
+    const ure = "Sao Jose do Rio Preto";
+
+    if(!cie || !nome){
+      err++;
+      continue;
+    }
+
+    try{
+      await setDoc(schoolDocRef(cie),{
+        cie,
+        nome,
+        nomeLower: nome.toLowerCase(),
+        municipio,
+        ure,
+        updatedAt: Date.now(),
+        updatedBy: currentUid()
+      }, { merge:true });
+      ok++;
+    }catch(e){
+      err++;
+    }
+
+  }
+
+  setMsg(bulkMsgPage,`Importacao concluida: ${ok} salvas, ${err} erros.`, ok > 0 ? "ok" : "err");
+
+  if(bulkPage) bulkPage.value = "";
+
+  loadList();
+
+});
+
 /* ================= LISTA ================= */
 
 async function loadList(){
@@ -347,7 +596,6 @@ async function loadList(){
       <td data-label="Escola">${indicadorTecnico} ${escapeHtml(s.nome)}</td>
       <td data-label="CIE"><code>${escapeHtml(s.cie)}</code></td>
       <td data-label="Municipio">${escapeHtml(s.municipio)}</td>
-      <td data-label="URE">${escapeHtml(s.ure)}</td>
       <td>
         <button class="btn" data-edit="${escapeHtml(s.cie)}">Editar</button>
         <button class="btn" data-del="${escapeHtml(s.cie)}">Excluir</button>
@@ -377,6 +625,8 @@ async function loadList(){
     });
   });
 
+  setupSchoolTableResizers();
+
 }
 
 /* ================= EDITAR ================= */
@@ -398,6 +648,36 @@ async function fillForm(cie){
 
 }
 
+const modalResultadoBusca = $("modalResultadoBusca");
+const btnFecharModalResultado = $("btnFecharModalResultado");
+
+/* ================= MODAL RESULTADO ================= */
+
+btnFecharModalResultado?.addEventListener('click', () => {
+  if (modalResultadoBusca) modalResultadoBusca.style.display = 'none';
+});
+
+modalResultadoBusca?.addEventListener('click', e => {
+  if (e.target === modalResultadoBusca) modalResultadoBusca.style.display = 'none';
+});
+
+function abrirModalResultado() {
+  if (modalResultadoBusca) modalResultadoBusca.style.display = 'flex';
+}
+
+function formatarResultadoEscola(s) {
+  return `
+    <div class="escolaResultado">
+      <div class="escolaNome">${escapeHtml(s.nome)}</div>
+      <div class="escolaInfo">
+        <span>🔢 ${escapeHtml(s.cie)}</span>
+        <span>📍 ${escapeHtml(s.municipio)}</span>
+        ${s.ure ? `<span>🏫 ${escapeHtml(s.ure)}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 /* ================= BUSCA CIE ================= */
 
 btnSearchCie?.addEventListener("click", async ()=>{
@@ -411,19 +691,17 @@ btnSearchCie?.addEventListener("click", async ()=>{
   const snap = await getDoc(schoolDocRef(cie));
 
   if(!snap.exists()){
-    if(result) result.innerHTML = "Nao encontrado";
+    if(result) result.innerHTML = '<div class="escolaResultado" style="text-align:center;color:var(--text-secondary);">Nenhuma escola encontrada com este CIE</div>';
+    abrirModalResultado();
     return;
   }
 
   const s = snap.data();
 
   if(result){
-    result.innerHTML = `
-      <strong>${escapeHtml(s.nome)}</strong><br>
-      CIE: ${escapeHtml(s.cie)}<br>
-      Municipio: ${escapeHtml(s.municipio)}
-    `;
+    result.innerHTML = formatarResultadoEscola(s);
   }
+  abrirModalResultado();
 
 });
 
@@ -456,13 +734,7 @@ btnSearchNome?.addEventListener("click", async ()=>{
 
     if(match){
 
-      html += `
-        <div>
-          <strong>${escapeHtml(s.nome)}</strong>
-           -  ${escapeHtml(s.cie)}
-           -  ${escapeHtml(s.municipio)}
-        </div>
-      `;
+      html += formatarResultadoEscola(s);
 
       found++;
 
@@ -471,11 +743,13 @@ btnSearchNome?.addEventListener("click", async ()=>{
   });
 
   if(found === 0){
-    if(result) result.innerHTML = "Nenhum resultado";
+    if(result) result.innerHTML = '<div class="escolaResultado" style="text-align:center;color:var(--text-secondary);">Nenhuma escola encontrada</div>';
+    abrirModalResultado();
     return;
   }
 
   if(result) result.innerHTML = html;
+  abrirModalResultado();
 
 });
 
@@ -600,6 +874,9 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
 
     const pageTecnicosEl = document.getElementById("page-tecnicos");
     if(pageTecnicosEl) pageTecnicosEl.style.display = page === "tecnicos" ? "block" : "none";
+
+    const pageCadastrarEscolasEl = document.getElementById("page-cadastrar-escolas");
+    if(pageCadastrarEscolasEl) pageCadastrarEscolasEl.style.display = page === "cadastrar-escolas" ? "block" : "none";
 
     if(page === "historico"){
       loadHistoricoCards();
@@ -1612,6 +1889,47 @@ const atendimentoFormMsg = $("atendimentoFormMsg");
 const btnFecharModalAtendimento = $("btnFecharModalAtendimento");
 const btnCancelarAtendimento = $("btnCancelarAtendimento");
 
+/* ================= MODAL NOVA ESCOLA SISTEMA ================= */
+
+const btnNovaEscolaSistema = $("btnNovaEscolaSistema");
+const modalNovaEscolaSistema = $("modalNovaEscolaSistema");
+const btnFecharModalNovaEscola = $("btnFecharModalNovaEscola");
+
+btnNovaEscolaSistema?.addEventListener('click', () => {
+  // Limpar formulário
+  if (schoolForm) schoolForm.reset();
+  if (cieEl) cieEl.value = '';
+  if (nomeEl) nomeEl.value = '';
+  if (municipioEl) municipioEl.value = '';
+  if (ureEl) ureEl.value = 'São José do Rio Preto';
+  setMsg(formMsg, '', '');
+  
+  if (modalNovaEscolaSistema) modalNovaEscolaSistema.style.display = 'flex';
+});
+
+btnFecharModalNovaEscola?.addEventListener('click', () => {
+  if (modalNovaEscolaSistema) modalNovaEscolaSistema.style.display = 'none';
+});
+
+modalNovaEscolaSistema?.addEventListener('click', e => {
+  if (e.target === modalNovaEscolaSistema) modalNovaEscolaSistema.style.display = 'none';
+});
+
+// Fechar modal após salvar com sucesso
+const observerFormMsg = new MutationObserver((mutations) => {
+  mutations.forEach((mutation) => {
+    if (formMsg?.classList.contains('ok') && modalNovaEscolaSistema?.style.display === 'flex') {
+      setTimeout(() => {
+        if (modalNovaEscolaSistema) modalNovaEscolaSistema.style.display = 'none';
+      }, 1500);
+    }
+  });
+});
+
+if (formMsg) {
+  observerFormMsg.observe(formMsg, { attributes: true, attributeFilter: ['class'] });
+}
+
 /* ================= MODAL EDITAR ESCOLA ================= */
 
 const modalEditarEscola = $("modalEditarEscola");
@@ -1968,7 +2286,7 @@ async function carregarEscolasDoTecnico(uid, container) {
       const status = STATUS_CONFIG[e.status] || STATUS_CONFIG.pendente;
       const prioridade = PRIORIDADE_CONFIG[e.prioridade] || PRIORIDADE_CONFIG.media;
       const dataPrevista = e.dataPrevista ? new Date(e.dataPrevista).toLocaleDateString('pt-BR') : 'Não definida';
-      const isMeu = e.tecnicoUid === currentUid();
+      const podeGerenciar = e.tecnicoUid === uid;
       
       html += `
         <div class="tecnicoEscolaCard" data-id="${escapeHtml(e.id)}" style="border-left-color: ${prioridade.cor}"
@@ -1999,7 +2317,7 @@ async function carregarEscolasDoTecnico(uid, container) {
             <button class="btn btnSmall btnVerEscola" data-id="${escapeHtml(e.id)}">
               👁️ Ver Detalhes
             </button>
-            ${isMeu ? `
+            ${podeGerenciar ? `
               <button class="btn btnSmall btnEditarEscola" data-id="${escapeHtml(e.id)}" style="background: var(--cor-primaria); color: white">
                 ✏️ Editar
               </button>
@@ -2046,6 +2364,12 @@ async function carregarEscolasSelect() {
   }
 }
 
+function getTecnicoNomeByUid(uid) {
+  const tecnico = tecnicosLista.find(t => t.uid === uid);
+  if (tecnico) return tecnico.nome || tecnico.email || 'Técnico';
+  return getUserFirstName() || 'Técnico';
+}
+
 function abrirModalNovaEscola(uid) {
   editandoEscolaTecnicoId = null;
   tecnicoSelecionado = uid;
@@ -2085,6 +2409,8 @@ formEscolaTecnico?.addEventListener('submit', async (e) => {
   
   const escolaSnap = await getDoc(doc(db, "escolas", cie));
   const escolaNome = escolaSnap.exists() ? escolaSnap.data().nome : cie;
+  const tecnicoUidDestino = tecnicoSelecionado || currentUid();
+  const tecnicoNomeDestino = getTecnicoNomeByUid(tecnicoUidDestino);
   
   const dados = {
     cie,
@@ -2094,8 +2420,8 @@ formEscolaTecnico?.addEventListener('submit', async (e) => {
     dataPrevista: dataPrevista || null,
     motivo,
     observacoes: obs,
-    tecnicoUid: tecnicoSelecionado || currentUid(),
-    tecnicoNome: getUserFirstName(),
+    tecnicoUid: tecnicoUidDestino,
+    tecnicoNome: tecnicoNomeDestino,
     dataAtualizacao: Date.now(),
     atendimentos: []
   };
@@ -2129,14 +2455,11 @@ async function editarEscolaTecnico(id) {
   if (!escola.exists()) return;
   
   const e = escola.data();
-  if (e.tecnicoUid !== currentUid()) {
-    alert('Você só pode editar suas próprias escolas');
-    return;
-  }
   
   editandoEscolaTecnicoId = id;
   tecnicoSelecionado = e.tecnicoUid;
   
+  await carregarEscolasSelect();
   if (escolaTecnicoSelect) escolaTecnicoSelect.value = e.cie;
   if (escolaTecnicoStatus) escolaTecnicoStatus.value = e.status;
   if (escolaTecnicoPrioridade) escolaTecnicoPrioridade.value = e.prioridade;
@@ -2147,7 +2470,6 @@ async function editarEscolaTecnico(id) {
   const titleEl = $("modalEscolaTecnicoTitle");
   if (titleEl) titleEl.textContent = '✏️ Editar Escola';
   setMsg(escolaTecnicoFormMsg, '', '');
-  carregarEscolasSelect();
   if (modalEscolaTecnico) modalEscolaTecnico.style.display = 'flex';
 }
 
@@ -2155,12 +2477,6 @@ async function excluirEscolaTecnico(id) {
   if (!confirm('Tem certeza que deseja excluir esta escola?')) return;
   
   try {
-    const escola = await getDoc(doc(db, "tecnicos_escolas", id));
-    if (escola.exists() && escola.data().tecnicoUid !== currentUid()) {
-      alert('Você só pode excluir suas próprias escolas');
-      return;
-    }
-    
     await deleteDoc(doc(db, "tecnicos_escolas", id));
     
     // Recarregar guia do técnico

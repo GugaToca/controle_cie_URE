@@ -383,6 +383,37 @@ textarea {
   margin-bottom: 16px;
 }
 
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.formGrid .formGroup {
+  margin-bottom: 0;
+}
+
+/* Página Cadastrar Escolas */
+#page-cadastrar-escolas .sistemaHeader {
+  margin-bottom: 20px;
+}
+
+#page-cadastrar-escolas .card {
+  margin-bottom: 20px;
+}
+
+#page-cadastrar-escolas textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--card);
+  color: var(--text);
+  resize: vertical;
+  min-height: 120px;
+}
+
 /* ================= ACTIONS ================= */
 
 .actions {
@@ -545,6 +576,115 @@ textarea {
   margin-top: 12px;
 }
 
+.searchCardCompact {
+  margin-top: 16px;
+  padding: 12px 16px;
+}
+
+.searchCompactHeader {
+  margin-bottom: 8px;
+}
+
+.sectionTitleCompact {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabsCompact {
+  margin-bottom: 8px;
+}
+
+.tabsCompact .tab {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.searchCompactInput {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.searchCompactInput input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  background: var(--card);
+  color: var(--text);
+}
+
+.searchCompactInput input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.searchCompactInput .btn {
+  padding: 8px 14px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* Resultado no Modal */
+.resultModal {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.resultModal:empty::before {
+  content: "Nenhum resultado encontrado";
+  display: block;
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 24px;
+  font-style: italic;
+}
+
+.resultModal .escolaResultado {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: var(--border-soft);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--primary);
+}
+
+.resultModal .escolaResultado:last-child {
+  margin-bottom: 0;
+}
+
+.resultModal .escolaNome {
+  font-weight: 600;
+  color: var(--primary);
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.resultModal .escolaInfo {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.resultModal .escolaInfo span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.modalContentCompact {
+  max-width: 500px;
+  width: 90%;
+}
+
 .searchCard {
   margin-top: 20px;
 }
@@ -625,6 +765,46 @@ textarea {
   color: var(--text);
   border-bottom: 2px solid var(--border);
   white-space: nowrap;
+}
+
+.modernTable.resizableTable th {
+  position: relative;
+}
+
+.modernTable.resizableTable th .colResizer {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  width: 10px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+  padding: 0;
+  z-index: 20;
+  touch-action: none;
+}
+
+.modernTable.resizableTable th .colResizer::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 18%;
+  bottom: 18%;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.modernTable.resizableTable th:hover .colResizer::before,
+.modernTable.resizableTable th .colResizer.isDragging::before {
+  background: var(--primary);
+}
+
+body.colResizeActive {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .modernTable td {
@@ -1026,6 +1206,10 @@ body.dark .modernTable td code {
 
 /* Tabela: layout em cartões no mobile pequeno */
 @media (max-width: 640px) {
+  .modernTable.resizableTable th .colResizer {
+    display: none;
+  }
+
   .tableWrap {
     border: none;
     background: transparent;
@@ -2059,6 +2243,30 @@ body.dark .modernTable td code {
   width: 20px;
   height: 20px;
   accent-color: var(--primary);
+}
+
+/* ================= SISTEMA - HEADER ================= */
+
+.sistemaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+.sistemaHeaderContent {
+  flex: 1;
+}
+
+.sistemaSubtitle {
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-size: 14px;
 }
 
 /* ================= GERENCIAMENTO DE ATRIBUIÇÕES ================= */
