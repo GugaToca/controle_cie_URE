@@ -205,7 +205,7 @@ logoutBtn?.addEventListener("click", async ()=>{
 
 });
 
-onAuthStateChanged(auth, (user)=>{
+onAuthStateChanged(auth, async (user)=>{
 
   if(user){
 
@@ -217,6 +217,9 @@ onAuthStateChanged(auth, (user)=>{
     }
 
     registrarUsuario(user);
+    
+    // Carregar lista de técnicos antes de carregar escolas
+    await carregarListaTecnicosCache();
     loadList();
 
     const NOVIDADES_KEY = `novidadesAgenda_v1_${user.uid}`;
@@ -299,6 +302,14 @@ async function loadList(){
   const snap = await getDocs(q);
   escolasCache = [];
 
+  // Buscar todos os vínculos de técnicos
+  const vinculosSnap = await getDocs(collection(db, "escolas_tecnicos"));
+  const vinculosPorCie = {};
+  vinculosSnap.forEach(d => {
+    const v = d.data();
+    vinculosPorCie[v.cie] = v;
+  });
+
   if(schoolCount){
     schoolCount.textContent = snap.size + " escolas cadastradas";
   }
@@ -309,10 +320,31 @@ async function loadList(){
 
     const s = d.data();
     escolasCache.push(s);
+    
+    // Verificar se tem técnico vinculado
+    const vinculo = vinculosPorCie[s.cie];
+    let indicadorTecnico = '';
+    
+    if (vinculo) {
+      // Encontrar técnico na lista para usar a mesma cor e abreviação
+      const tecnico = listaTecnicosCache.find(t => t.uid === vinculo.tecnicoUid);
+      if (tecnico) {
+        const cor = tecnico.cor || CORES_TECNICOS[0];
+        const abreviacao = tecnico.abreviacao || 'T';
+        
+        indicadorTecnico = `
+          <span class="indicadorTecnico" 
+                style="background: ${cor.primaria}; color: white;"
+                title="Técnico: ${escapeHtml(tecnico.nome || 'Não informado')}">
+            ${abreviacao}
+          </span>
+        `;
+      }
+    }
 
     rows += `
     <tr>
-      <td data-label="Escola">${escapeHtml(s.nome)}</td>
+      <td data-label="Escola">${indicadorTecnico} ${escapeHtml(s.nome)}</td>
       <td data-label="CIE"><code>${escapeHtml(s.cie)}</code></td>
       <td data-label="Municipio">${escapeHtml(s.municipio)}</td>
       <td data-label="URE">${escapeHtml(s.ure)}</td>
@@ -328,7 +360,7 @@ async function loadList(){
   if(tbody) tbody.innerHTML = rows;
 
   tbody?.querySelectorAll("[data-edit]").forEach(btn=>{
-    btn.addEventListener("click", ()=>fillForm(btn.dataset.edit));
+    btn.addEventListener("click", ()=>abrirModalEditarEscola(btn.dataset.edit));
   });
 
   tbody?.querySelectorAll("[data-del]").forEach(btn=>{
@@ -1506,6 +1538,47 @@ const CORES_TECNICOS = [
   { nome: 'vermelho', primaria: '#dc2626', secundaria: '#fee2e2', clara: '#fef2f2' }
 ];
 
+// Carregar lista de técnicos para cache
+async function carregarListaTecnicosCache() {
+  try {
+    const snap = await getDocs(collection(db, "usuarios"));
+    listaTecnicosCache = [];
+    snap.forEach(d => listaTecnicosCache.push(d.data()));
+    listaTecnicosCache.sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email));
+    
+    // Gerar abreviações únicas
+    gerarAbreviacoesTecnicos();
+    
+  } catch (e) {
+    console.error("carregarListaTecnicosCache", e);
+  }
+}
+
+// Gerar abreviações únicas para técnicos
+function gerarAbreviacoesTecnicos() {
+  const iniciaisUsadas = new Map();
+  
+  listaTecnicosCache.forEach((tecnico, index) => {
+    const nome = tecnico.nome || tecnico.email;
+    const partes = nome.trim().split(/\s+/);
+    const primeiraLetra = partes[0].charAt(0).toUpperCase();
+    
+    // Verificar se já existe alguém com a mesma inicial
+    if (iniciaisUsadas.has(primeiraLetra)) {
+      // Usar duas letras do primeiro nome
+      tecnico.abreviacao = partes[0].substring(0, 2).toUpperCase();
+    } else {
+      // Usar apenas a primeira letra
+      tecnico.abreviacao = primeiraLetra;
+      iniciaisUsadas.set(primeiraLetra, index);
+    }
+    
+    // Atribuir cor baseada na posição
+    tecnico.corIndex = index % CORES_TECNICOS.length;
+    tecnico.cor = CORES_TECNICOS[tecnico.corIndex];
+  });
+}
+
 // Referências DOM
 const tecnicosTabsBar = $("tecnicosTabsBar");
 const tecnicosContentArea = $("tecnicosContentArea");
@@ -1538,6 +1611,157 @@ const atendimentoConcluido = $("atendimentoConcluido");
 const atendimentoFormMsg = $("atendimentoFormMsg");
 const btnFecharModalAtendimento = $("btnFecharModalAtendimento");
 const btnCancelarAtendimento = $("btnCancelarAtendimento");
+
+/* ================= MODAL EDITAR ESCOLA ================= */
+
+const modalEditarEscola = $("modalEditarEscola");
+const formEditarEscola = $("formEditarEscola");
+const editEscolaCie = $("editEscolaCie");
+const editEscolaNome = $("editEscolaNome");
+const editEscolaMunicipio = $("editEscolaMunicipio");
+const editEscolaUre = $("editEscolaUre");
+const editEscolaTecnico = $("editEscolaTecnico");
+const editEscolaFormMsg = $("editEscolaFormMsg");
+const btnFecharModalEditarEscola = $("btnFecharModalEditarEscola");
+const btnCancelarEditarEscola = $("btnCancelarEditarEscola");
+
+let editandoEscolaCie = null;
+let listaTecnicosCache = [];
+
+// Carregar técnicos no select
+async function carregarTecnicosSelect() {
+  if (!editEscolaTecnico) return;
+  
+  // Garantir que as abreviações estejam geradas
+  if (listaTecnicosCache.length > 0 && !listaTecnicosCache[0].abreviacao) {
+    gerarAbreviacoesTecnicos();
+  }
+  
+  editEscolaTecnico.innerHTML = '<option value="">— Selecione um técnico —</option>';
+  
+  listaTecnicosCache.forEach(tecnico => {
+    const nome = tecnico.nome || tecnico.email;
+    const abreviacao = tecnico.abreviacao || nome.charAt(0).toUpperCase();
+    editEscolaTecnico.innerHTML += `<option value="${escapeHtml(tecnico.uid)}">${abreviacao} - ${escapeHtml(nome)}</option>`;
+  });
+}
+
+// Abrir modal de edição
+async function abrirModalEditarEscola(cie) {
+  editandoEscolaCie = cie;
+  await carregarTecnicosSelect();
+  
+  const snap = await getDoc(schoolDocRef(cie));
+  if (!snap.exists()) return;
+  
+  const s = snap.data();
+  
+  if (editEscolaCie) editEscolaCie.value = s.cie || "";
+  if (editEscolaNome) editEscolaNome.value = s.nome || "";
+  if (editEscolaMunicipio) editEscolaMunicipio.value = s.municipio || "";
+  if (editEscolaUre) editEscolaUre.value = s.ure || "Sao Jose do Rio Preto";
+  
+  // Buscar técnico vinculado
+  try {
+    const vinculoSnap = await getDocs(
+      query(collection(db, "escolas_tecnicos"), where("cie", "==", cie))
+    );
+    if (!vinculoSnap.empty) {
+      const vinculo = vinculoSnap.docs[0].data();
+      if (editEscolaTecnico) editEscolaTecnico.value = vinculo.tecnicoUid || "";
+    } else {
+      if (editEscolaTecnico) editEscolaTecnico.value = "";
+    }
+  } catch (e) {
+    console.error("Erro ao buscar vínculo", e);
+    if (editEscolaTecnico) editEscolaTecnico.value = "";
+  }
+  
+  setMsg(editEscolaFormMsg, '', '');
+  if (modalEditarEscola) modalEditarEscola.style.display = 'flex';
+}
+
+// Fechar modal
+btnFecharModalEditarEscola?.addEventListener('click', () => {
+  if (modalEditarEscola) modalEditarEscola.style.display = 'none';
+  editandoEscolaCie = null;
+});
+
+btnCancelarEditarEscola?.addEventListener('click', () => {
+  if (modalEditarEscola) modalEditarEscola.style.display = 'none';
+  editandoEscolaCie = null;
+});
+
+modalEditarEscola?.addEventListener('click', e => {
+  if (e.target === modalEditarEscola) {
+    modalEditarEscola.style.display = 'none';
+    editandoEscolaCie = null;
+  }
+});
+
+// Salvar edição
+formEditarEscola?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setMsg(editEscolaFormMsg, '', '');
+  
+  if (!editandoEscolaCie) return;
+  
+  const nome = normalizeName(editEscolaNome?.value);
+  const municipio = normalizeName(editEscolaMunicipio?.value);
+  const ure = normalizeName(editEscolaUre?.value) || "Sao Jose do Rio Preto";
+  const tecnicoUid = editEscolaTecnico?.value || "";
+  
+  if (!nome) return setMsg(editEscolaFormMsg, 'Informe o nome da escola', 'err');
+  if (!municipio) return setMsg(editEscolaFormMsg, 'Informe o município', 'err');
+  
+  try {
+    // Atualizar escola
+    await setDoc(schoolDocRef(editandoEscolaCie), {
+      cie: editandoEscolaCie,
+      nome,
+      nomeLower: nome.toLowerCase(),
+      municipio,
+      municipioLower: municipio.toLowerCase(),
+      ure
+    }, { merge: true });
+    
+    // Atualizar vínculo com técnico
+    if (tecnicoUid) {
+      // Remover vínculos antigos
+      const vinculosAntigos = await getDocs(
+        query(collection(db, "escolas_tecnicos"), where("cie", "==", editandoEscolaCie))
+      );
+      const batchDeletes = vinculosAntigos.docs.map(d => deleteDoc(doc(db, "escolas_tecnicos", d.id)));
+      await Promise.all(batchDeletes);
+      
+      // Criar novo vínculo
+      const tecnico = listaTecnicosCache.find(t => t.uid === tecnicoUid);
+      await addDoc(collection(db, "escolas_tecnicos"), {
+        cie: editandoEscolaCie,
+        escolaNome: nome,
+        tecnicoUid,
+        tecnicoNome: tecnico ? (tecnico.nome || tecnico.email) : 'Técnico',
+        atribuidoPor: currentUid(),
+        atribuidoPorNome: getUserFirstName(),
+        dataAtribuicao: Date.now()
+      });
+    } else {
+      // Remover vínculos se nenhum técnico selecionado
+      const vinculosAntigos = await getDocs(
+        query(collection(db, "escolas_tecnicos"), where("cie", "==", editandoEscolaCie))
+      );
+      const batchDeletes = vinculosAntigos.docs.map(d => deleteDoc(doc(db, "escolas_tecnicos", d.id)));
+      await Promise.all(batchDeletes);
+    }
+    
+    if (modalEditarEscola) modalEditarEscola.style.display = 'none';
+    loadList();
+    setMsg(editEscolaFormMsg, 'Escola atualizada com sucesso', 'ok');
+  } catch (err) {
+    console.error(err);
+    setMsg(editEscolaFormMsg, 'Erro ao salvar alterações', 'err');
+  }
+});
 
 // Estado
 let tecnicosLista = [];
@@ -1590,10 +1814,10 @@ function renderizarTabsTecnicos() {
   
   let html = '';
   tecnicosLista.forEach((tecnico, index) => {
-    const cor = CORES_TECNICOS[index % CORES_TECNICOS.length];
+    const cor = tecnico.cor || CORES_TECNICOS[index % CORES_TECNICOS.length];
     const isAtivo = tecnicoSelecionado === tecnico.uid;
     const nome = tecnico.nome || tecnico.email.split('@')[0];
-    const inicial = nome.charAt(0).toUpperCase();
+    const abreviacao = tecnico.abreviacao || nome.charAt(0).toUpperCase();
     
     html += `
       <div class="tecnicoTab ${isAtivo ? 'ativo' : ''}" 
@@ -1601,7 +1825,7 @@ function renderizarTabsTecnicos() {
            data-cor="${cor.nome}"
            style="--cor-primaria: ${cor.primaria}; --cor-secundaria: ${cor.secundaria}; --cor-clara: ${cor.clara}"
       >
-        <div class="tecnicoTabAvatar" style="background: ${cor.primaria}">${inicial}</div>
+        <div class="tecnicoTabAvatar" style="background: ${cor.primaria}">${abreviacao}</div>
         <span class="tecnicoTabNome">${escapeHtml(nome)}</span>
       </div>
     `;
@@ -1617,8 +1841,8 @@ function renderizarTabsTecnicos() {
 
 async function selecionarTecnico(uid) {
   tecnicoSelecionado = uid;
-  const tecnicoIndex = tecnicosLista.findIndex(t => t.uid === uid);
-  tecnicoCorAtual = CORES_TECNICOS[tecnicoIndex % CORES_TECNICOS.length];
+  const tecnico = tecnicosLista.find(t => t.uid === uid);
+  tecnicoCorAtual = tecnico?.cor || CORES_TECNICOS[0];
   
   // Atualizar tabs visuais
   tecnicosTabsBar?.querySelectorAll('.tecnicoTab').forEach(tab => {
@@ -2259,4 +2483,3 @@ async function removerVinculoEscola(id) {
     alert('Erro ao remover vínculo');
   }
 }
-

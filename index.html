@@ -1100,6 +1100,72 @@ Histórico de Atendimento
 
 </div>
 
+<!-- MODAL EDITAR ESCOLA -->
+
+<div id="modalEditarEscola" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEditarEscolaTitle">
+
+  <div class="modalContent modalLarge">
+
+    <div class="modalHeader">
+      <h3 id="modalEditarEscolaTitle" class="modalTitle">✏️ Editar Escola</h3>
+      <button id="btnFecharModalEditarEscola" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="formEditarEscola" class="form" novalidate>
+
+      <div class="formGrid">
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">CIE</span>
+            <input id="editEscolaCie" type="text" readonly style="background: var(--border-soft)">
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Nome da Escola *</span>
+            <input id="editEscolaNome" type="text" required aria-required="true">
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Município *</span>
+            <input id="editEscolaMunicipio" type="text" required aria-required="true">
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">URE</span>
+            <input id="editEscolaUre" type="text" value="Sao Jose do Rio Preto">
+          </label>
+        </div>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Técnico Responsável</span>
+          <select id="editEscolaTecnico">
+            <option value="">— Selecione um técnico —</option>
+          </select>
+          <small class="hint">O técnico selecionado será vinculado a esta escola</small>
+        </label>
+      </div>
+
+      <div id="editEscolaFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Salvar Alterações</button>
+        <button type="button" id="btnCancelarEditarEscola" class="btn btnSecondary">Cancelar</button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
 <script type="module" src="app.js"></script>
 
 <script>
