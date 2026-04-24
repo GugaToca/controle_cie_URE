@@ -156,7 +156,7 @@ body {
 }
 
 .logoMascot {
-  height: 80px;
+  height: 130px;
   width: auto;
   transition: transform 0.3s ease;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
@@ -166,7 +166,7 @@ body {
 }
 
 .logoMascot:hover {
-  transform: scale(1.05) rotate(2deg);
+  transform: scale(2.05) rotate(2deg);
 }
 
 .headerBtns {
@@ -2061,6 +2061,101 @@ body.dark .modernTable td code {
   accent-color: var(--primary);
 }
 
+/* ================= GERENCIAMENTO DE ATRIBUIÇÕES ================= */
+
+.tecnicosHeaderActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.atribuicoesContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.atribuicoesSection {
+  background: var(--bg);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+
+.atribuicoesLista {
+  min-height: 200px;
+}
+
+.atribuicoesGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.atribuicaoItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  transition: var(--transition);
+}
+
+.atribuicaoItem:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.atribuicaoInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.atribuicaoInfo strong {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.atribuicaoCie {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.atribuicaoObs {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.atribuicaoData {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.btnExcluirAtribuicao {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  background: var(--error-light, #fee2e2);
+  color: var(--error);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btnExcluirAtribuicao:hover {
+  background: var(--error);
+  color: white;
+}
+
 /* Responsivo */
 @media (max-width: 768px) {
   .tecnicosHeader {
@@ -2093,5 +2188,212 @@ body.dark .modernTable td code {
   .sectionHeader {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* ================= TÉCNICOS - GUIAS POR TÉCNICO ================= */
+
+.tecnicosPageContainer {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+  background: var(--bg);
+}
+
+.tecnicosPageHeader {
+  padding: 20px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.tecnicosPageSubtitle {
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+/* Barra de guias (estilo Chrome) */
+.tecnicosTabsBar {
+  display: flex;
+  gap: 4px;
+  padding: 8px 24px 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tecnicosTabsBar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tecnicoTab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--cor-clara);
+  border: 1px solid var(--cor-secundaria);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.tecnicoTab:hover {
+  background: var(--cor-secundaria);
+}
+
+.tecnicoTab.ativo {
+  background: var(--cor-primaria);
+  border-color: var(--cor-primaria);
+  color: white;
+}
+
+.tecnicoTabAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.tecnicoTabNome {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Área de conteúdo */
+.tecnicosContentArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.tecnicosTabEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* Conteúdo de cada técnico */
+.tecnicoTabContent {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.tecnicoTabHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: var(--card);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--cor-primaria);
+  box-shadow: var(--shadow-sm);
+}
+
+.tecnicoTabInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.tecnicoTabHeaderActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tecnicoAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+}
+
+.tecnicoNome {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.tecnicoEmail {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Stats do técnico */
+.tecnicoStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.tecnicoStatCard {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--cor-primaria);
+}
+
+.tecnicoStatValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--cor-primaria);
+}
+
+/* Grid de escolas */
+.tecnicoEscolasGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.tecnicoEscolaCard {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .tecnicoTabHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .tecnicoStats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .tecnicoEscolasGrid {
+    grid-template-columns: 1fr;
   }
 }

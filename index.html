@@ -625,86 +625,108 @@ Histórico de Atendimento
 
 </div>
 
-<!-- PÁGINA TÉCNICOS -->
+<!-- PÁGINA TÉCNICOS - GUIAS POR TÉCNICO -->
 
 <div id="page-tecnicos" style="display:none" role="tabpanel" aria-labelledby="tecnicos-tab">
 
-  <div class="wrap">
+  <div class="tecnicosPageContainer">
 
-    <!-- Header da página -->
-    <div class="tecnicosHeader">
-      <div class="tecnicosHeaderContent">
-        <h2 class="pageTitle">
-          <span class="titleIcon">👨‍🔧</span>
-          Controle de Visitas Técnicas
-        </h2>
-        <p class="tecnicosSubtitle">Cadastre suas escolas e registre os atendimentos realizados</p>
-      </div>
-      <button id="btnNovaEscolaTecnico" class="btn primary btnLarge">
-        <span>➕</span>
-        <span>Nova Escola</span>
-      </button>
+    <!-- Guias/Tabs dos Técnicos (estilo Chrome) -->
+    <div class="tecnicosTabsBar" id="tecnicosTabsBar">
+      <!-- Tabs serão geradas via JS -->
     </div>
 
-    <!-- Dashboard de estatísticas -->
-    <div class="tecnicosStats">
-      <div class="statCard">
-        <div class="statIcon">🏫</div>
-        <div class="statValue" id="statTotalEscolas">0</div>
-        <div class="statLabel">Minhas Escolas</div>
+    <!-- Conteúdo de cada técnico -->
+    <div class="tecnicosContentArea" id="tecnicosContentArea">
+      
+      <!-- Estado vazio (quando nenhum técnico selecionado) -->
+      <div id="tecnicosTabEmpty" class="tecnicosTabEmpty">
+        <div class="emptyIcon">👨‍🔧</div>
+        <h3>Selecione um técnico</h3>
+        <p>Clique em uma das guias acima para visualizar as escolas e atendimentos do técnico.</p>
       </div>
-      <div class="statCard">
-        <div class="statIcon">✅</div>
-        <div class="statValue" id="statConcluidas">0</div>
-        <div class="statLabel">Concluídas</div>
-      </div>
-      <div class="statCard">
-        <div class="statIcon">🔄</div>
-        <div class="statValue" id="statPendentes">0</div>
-        <div class="statLabel">Pendentes</div>
-      </div>
-      <div class="statCard">
-        <div class="statIcon">📅</div>
-        <div class="statValue" id="statUltimaVisita">--</div>
-        <div class="statLabel">Última Visita</div>
-      </div>
-    </div>
 
-    <!-- Filtros e busca -->
-    <div class="tecnicosFilters card cardElevated">
-      <div class="filterGroup">
-        <div class="filterItem">
-          <label class="labelText">Status</label>
-          <select id="filtroStatusTecnicos">
-            <option value="todos">Todos</option>
-            <option value="pendente">🔄 Pendente</option>
-            <option value="em_andamento">⏳ Em Andamento</option>
-            <option value="concluida">✅ Concluída</option>
-          </select>
+      <!-- Template do conteúdo de cada técnico (clonado via JS) -->
+      <div id="tecnicoTabTemplate" style="display:none">
+        
+        <!-- Header do técnico -->
+        <div class="tecnicoTabHeader">
+          <div class="tecnicoTabInfo">
+            <div class="tecnicoAvatar"></div>
+            <div>
+              <h3 class="tecnicoNome"></h3>
+              <span class="tecnicoEmail"></span>
+            </div>
+          </div>
+          <div class="tecnicoTabHeaderActions">
+            <button class="btnGerenciarEscolasTecnico btn btnSecondary btnLarge">
+              <span>⚙️</span>
+              <span>Escolas</span>
+            </button>
+            <button class="btnNovaEscolaTecnico btn primary btnLarge">
+              <span>➕</span>
+              <span>Nova Escola</span>
+            </button>
+          </div>
         </div>
-        <div class="filterItem">
-          <label class="labelText">Técnico</label>
-          <select id="filtroTecnico">
-            <option value="todos">Todos os técnicos</option>
-          </select>
+
+        <!-- Dashboard do técnico -->
+        <div class="tecnicoStats">
+          <div class="tecnicoStatCard">
+            <div class="tecnicoStatIcon">🏫</div>
+            <div class="tecnicoStatValue statTotal">0</div>
+            <div class="tecnicoStatLabel">Escolas</div>
+          </div>
+          <div class="tecnicoStatCard">
+            <div class="tecnicoStatIcon">✅</div>
+            <div class="tecnicoStatValue statConcluidas">0</div>
+            <div class="tecnicoStatLabel">Concluídas</div>
+          </div>
+          <div class="tecnicoStatCard">
+            <div class="tecnicoStatIcon">🔄</div>
+            <div class="tecnicoStatValue statPendentes">0</div>
+            <div class="tecnicoStatLabel">Pendentes</div>
+          </div>
+          <div class="tecnicoStatCard">
+            <div class="tecnicoStatIcon">📅</div>
+            <div class="tecnicoStatValue statUltimaVisita">--</div>
+            <div class="tecnicoStatLabel">Última Visita</div>
+          </div>
         </div>
-        <div class="filterItem filterSearch">
-          <label class="labelText">Buscar</label>
-          <input type="search" id="buscaEscolaTecnico" placeholder="Nome da escola...">
+
+        <!-- Filtros -->
+        <div class="tecnicoFilters card cardElevated">
+          <div class="filterGroup">
+            <div class="filterItem">
+              <label class="labelText">Status</label>
+              <select class="filtroStatusTecnico">
+                <option value="todos">Todos</option>
+                <option value="pendente">🔄 Pendente</option>
+                <option value="em_andamento">⏳ Em Andamento</option>
+                <option value="concluida">✅ Concluída</option>
+              </select>
+            </div>
+            <div class="filterItem filterSearch">
+              <label class="labelText">Buscar Escola</label>
+              <input type="search" class="buscaEscolaTecnico" placeholder="Nome da escola...">
+            </div>
+          </div>
         </div>
+
+        <!-- Lista de escolas -->
+        <div class="tecnicoEscolasGrid">
+          <!-- Cards das escolas -->
+        </div>
+
+        <!-- Estado vazio -->
+        <div class="tecnicoEmpty" style="display:none">
+          <div class="emptyIcon">🏫</div>
+          <h3>Nenhuma escola cadastrada</h3>
+          <p>Este técnico ainda não possui escolas em controle de visitas.</p>
+        </div>
+
       </div>
-    </div>
 
-    <!-- Lista de escolas em cards -->
-    <div id="listaEscolasTecnicos" class="tecnicosGrid" role="list">
-      <!-- Cards serão inseridos via JS -->
-    </div>
-
-    <!-- Estado vazio -->
-    <div id="tecnicosEmpty" class="tecnicosEmpty" style="display:none">
-      <div class="emptyIcon">🏫</div>
-      <h3>Nenhuma escola cadastrada</h3>
-      <p>Clique em "Nova Escola" para começar o controle de visitas.</p>
     </div>
 
   </div>
@@ -914,6 +936,162 @@ Histórico de Atendimento
       <div class="actions">
         <button type="submit" class="btn primary btnLarge">💾 Salvar Atendimento</button>
         <button type="button" id="btnCancelarAtendimento" class="btn btnSecondary">Cancelar</button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<!-- MODAL GERENCIAR ATRIBUIÇÕES -->
+
+<div id="modalAtribuicoes" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalAtribuicoesTitle">
+
+  <div class="modalContent modalLarge">
+
+    <div class="modalHeader">
+      <h3 id="modalAtribuicoesTitle" class="modalTitle">⚙️ Gerenciar Atribuições de Escolas</h3>
+      <button id="btnFecharModalAtribuicoes" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="atribuicoesContent">
+      
+      <!-- Seleção de técnico -->
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Selecionar Técnico *</span>
+          <select id="atribuicaoTecnicoSelect" required>
+            <option value="">— Escolha um técnico —</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- Lista de escolas atribuídas -->
+      <div class="atribuicoesSection">
+        <div class="sectionHeader">
+          <h4>🏫 Escolas Atribuídas</h4>
+          <button id="btnAdicionarEscolaAtribuicao" class="btn primary btnSmall">➕ Adicionar Escola</button>
+        </div>
+        
+        <div id="listaEscolasAtribuidas" class="atribuicoesLista">
+          <p class="hint">Selecione um técnico para ver suas escolas atribuídas</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- MODAL ADICIONAR ESCOLA À ATRIBUIÇÃO -->
+
+<div id="modalAdicionarEscola" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalAdicionarEscolaTitle">
+
+  <div class="modalContent">
+
+    <div class="modalHeader">
+      <h3 id="modalAdicionarEscolaTitle" class="modalTitle">➕ Adicionar Escola</h3>
+      <button id="btnFecharModalAdicionarEscola" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="formAdicionarEscola" class="form" novalidate>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Escola *</span>
+          <select id="escolaParaAtribuir" required aria-required="true">
+            <option value="">— Selecione uma escola —</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Observação</span>
+          <textarea id="atribuicaoObs" rows="2" placeholder="Motivo da atribuição, período, etc."></textarea>
+        </label>
+      </div>
+
+      <div id="atribuicaoFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Adicionar</button>
+        <button type="button" id="btnCancelarAdicionarEscola" class="btn btnSecondary">Cancelar</button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<!-- MODAL GERENCIAR ESCOLAS DO TÉCNICO -->
+
+<div id="modalGerenciarEscolasTecnico" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalGerenciarEscolasTecnicoTitle">
+
+  <div class="modalContent modalLarge">
+
+    <div class="modalHeader">
+      <h3 id="modalGerenciarEscolasTecnicoTitle" class="modalTitle">⚙️ Gerenciar Escolas</h3>
+      <button id="btnFecharModalGerenciarEscolas" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="gerenciarEscolasContent">
+      
+      <!-- Lista de escolas vinculadas -->
+      <div class="escolasVinculadasSection">
+        <div class="sectionHeader">
+          <h4>🏫 Escolas Vinculadas</h4>
+          <button id="btnAdicionarEscolaVinculo" class="btn primary btnSmall">➕ Adicionar Escola</button>
+        </div>
+        
+        <div id="listaEscolasVinculadas" class="escolasVinculadasLista">
+          <p class="hint">Carregando escolas...</p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- MODAL ADICIONAR ESCOLA AO TÉCNICO -->
+
+<div id="modalAdicionarEscolaVinculo" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalAdicionarEscolaVinculoTitle">
+
+  <div class="modalContent">
+
+    <div class="modalHeader">
+      <h3 id="modalAdicionarEscolaVinculoTitle" class="modalTitle">➕ Adicionar Escola</h3>
+      <button id="btnFecharModalAdicionarEscolaVinculo" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="formAdicionarEscolaVinculo" class="form" novalidate>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Escola *</span>
+          <select id="escolaParaVincular" required aria-required="true">
+            <option value="">— Selecione uma escola —</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Observação</span>
+          <textarea id="vinculoObs" rows="2" placeholder="Motivo da vinculação, período, etc."></textarea>
+        </label>
+      </div>
+
+      <div id="vinculoFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Adicionar</button>
+        <button type="button" id="btnCancelarAdicionarEscolaVinculo" class="btn btnSecondary">Cancelar</button>
       </div>
 
     </form>
