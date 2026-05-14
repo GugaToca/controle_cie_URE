@@ -1215,10 +1215,12 @@ body.dark .modernTable td code {
     background: transparent;
     box-shadow: none;
     border-radius: 0;
+    overflow-x: visible;
   }
 
   .modernTable {
-    min-width: unset;
+    min-width: 0 !important;
+    width: 100% !important;
   }
 
   .modernTable thead {

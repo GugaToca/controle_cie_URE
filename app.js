@@ -595,7 +595,7 @@ async function loadList(){
     <tr>
       <td data-label="Escola">${indicadorTecnico} ${escapeHtml(s.nome)}</td>
       <td data-label="CIE"><code>${escapeHtml(s.cie)}</code></td>
-      <td data-label="Municipio">${escapeHtml(s.municipio)}</td>
+      <td data-label="Município">${escapeHtml(s.municipio)}</td>
       <td>
         <button class="btn" data-edit="${escapeHtml(s.cie)}">Editar</button>
         <button class="btn" data-del="${escapeHtml(s.cie)}">Excluir</button>
@@ -877,6 +877,10 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
 
     const pageCadastrarEscolasEl = document.getElementById("page-cadastrar-escolas");
     if(pageCadastrarEscolasEl) pageCadastrarEscolasEl.style.display = page === "cadastrar-escolas" ? "block" : "none";
+
+    const pageGamesEl = document.getElementById("page-games");
+    if(pageGamesEl) pageGamesEl.style.display = page === "games" ? "block" : "none";
+    if(page !== "games" && window.URE_GAMES) window.URE_GAMES.snakeStop();
 
     if(page === "historico"){
       loadHistoricoCards();
