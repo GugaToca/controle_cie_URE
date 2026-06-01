@@ -14,6 +14,9 @@
 <meta name="apple-mobile-web-app-title" content="URE SJR Preto">
 <link rel="apple-touch-icon" href="masct_ure.png">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 
@@ -77,19 +80,10 @@
 <span class="tabIcon">📚</span>
 <span>Sistema</span>
 </button>
-<button class="mainTab" data-page="historico" role="tab" aria-selected="false" aria-controls="page-historico">
-<span class="tabIcon">📋</span>
-<span>Histórico de Atendimento</span>
-</button>
-
-<button class="mainTab" data-page="agenda" role="tab" aria-selected="false" aria-controls="page-agenda">
-<span class="tabIcon">📅</span>
-<span>Agenda</span>
-</button>
 
 <button class="mainTab" data-page="cameras" role="tab" aria-selected="false" aria-controls="page-cameras">
 <span class="tabIcon">📹</span>
-<span>Câmeras</span>
+<span>Monitoramento</span>
 </button>
 
 <button class="mainTab" data-page="tecnicos" role="tab" aria-selected="false" aria-controls="page-tecnicos">
@@ -97,15 +91,16 @@
 <span>Técnicos</span>
 </button>
 
+<button class="mainTab" data-page="inventario" role="tab" aria-selected="false" aria-controls="page-inventario">
+<span class="tabIcon">📦</span>
+<span>Inventário</span>
+</button>
+
 <button class="mainTab" data-page="cadastrar-escolas" role="tab" aria-selected="false" aria-controls="page-cadastrar-escolas">
 <span class="tabIcon">➕</span>
 <span>Cadastrar Escolas</span>
 </button>
 
-<button class="mainTab" data-page="games" role="tab" aria-selected="false" aria-controls="page-games">
-<span class="tabIcon">🎮</span>
-<span>Games</span>
-</button>
 
 </nav>
 
@@ -213,205 +208,6 @@ Importar em massa
 </div>
 
 </div>
-
-</div>
-
-<!-- PÁGINA HISTÓRICO -->
-
-<div id="page-historico" style="display:none" role="tabpanel" aria-labelledby="historico-tab">
-
-<div class="wrap">
-
-<h2 class="pageTitle">
-<span class="titleIcon">📋</span>
-Histórico de Atendimento
-</h2>
-
-<div class="card cardElevated searchCard">
-  <h3 class="sectionSubtitle">
-    <span class="titleIcon">🔍</span>
-    Buscar escola
-  </h3>
-
-  <div class="searchBox">
-    <input 
-      type="search" 
-      id="searchHistorico" 
-      placeholder="Digite nome, município ou CIE"
-      aria-label="Buscar escola para ver histórico"
-    >
-  </div>
-
-</div>
-
-<div id="cardsHistorico" class="cardsGrid" role="list"></div>
-
-</div>
-
-<!-- MODAL HISTÓRICO -->
-
-<div id="modalHistorico" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalSchool">
-
-<div class="modalContent">
-
-<div class="modalHeader">
-<h3 id="modalSchool" class="modalTitle"></h3>
-<button id="btnFecharModal" class="btnCloseModal" aria-label="Fechar modal">✕</button>
-</div>
-
-<div id="historicoLista" class="historicoLista"></div>
-
-<div class="modalForm">
-<label for="historicoTexto" class="visuallyHidden">Descreva o atendimento realizado</label>
-<textarea id="historicoTexto" placeholder="Descreva o atendimento realizado" aria-label="Nova anotação de atendimento"></textarea>
-
-<button type="button" id="btnSalvarHistorico" class="btn primary btnLarge btnBlock">💾 Salvar anotação</button>
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-<!-- PÁGINA AGENDA -->
-
-<div id="page-agenda" style="display:none" role="tabpanel" aria-labelledby="agenda-tab">
-
-  <div class="wrap">
-
-    <h2 class="pageTitle">
-      <span class="titleIcon">📅</span>
-      Agenda
-    </h2>
-
-    <!-- Barra de controles -->
-    <div class="agendaControls card cardElevated">
-
-      <div class="agendaControlsTop">
-
-        <div class="agendaSelectorWrap">
-          <label class="labelText" for="agendaSelector">Visualizando:</label>
-          <select id="agendaSelector" aria-label="Selecionar agenda"></select>
-        </div>
-
-        <button id="btnCompartilharAgenda" class="btn btnSecondary">🔗 Compartilhar minha agenda</button>
-        <button id="btnNovoEvento" class="btn primary">➕ Novo Evento</button>
-
-      </div>
-
-      <div class="agendaViewToggle">
-        <button class="tab active" id="btnViewCalendario" data-view="calendario">📅 Calendário</button>
-        <button class="tab" id="btnViewLista" data-view="lista">📋 Lista</button>
-      </div>
-
-    </div>
-
-    <!-- Calendário -->
-    <div id="agendaCalendario" class="agendaCalendarioWrap">
-
-      <div class="calendarioNav">
-        <button id="btnMesAnterior" class="btn btnSecondary" aria-label="Mês anterior">‹</button>
-        <span id="calendarioMesAno" class="calendarioMesAno"></span>
-        <button id="btnProximoMes" class="btn btnSecondary" aria-label="Próximo mês">›</button>
-      </div>
-
-      <div class="calendarioGrid" id="calendarioGrid" role="grid" aria-label="Calendário de eventos"></div>
-
-    </div>
-
-    <!-- Lista -->
-    <div id="agendaLista" style="display:none" class="agendaListaWrap" role="list"></div>
-
-  </div>
-
-</div>
-
-<!-- MODAL NOVO / EDITAR EVENTO -->
-
-<div id="modalEvento" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEventoTitle">
-
-  <div class="modalContent">
-
-    <div class="modalHeader">
-      <h3 id="modalEventoTitle" class="modalTitle">Novo Evento</h3>
-      <button id="btnFecharModalEvento" class="btnCloseModal" aria-label="Fechar">✕</button>
-    </div>
-
-    <form id="formEvento" class="form" novalidate>
-
-      <div class="formGroup">
-        <label class="inputLabel">
-          <span class="labelText">TÉCNICO *</span>
-          <input id="eventoTitulo" type="text" placeholder="Título do evento" required aria-required="true">
-        </label>
-      </div>
-
-      <div class="formGroup">
-        <label class="inputLabel">
-          <span class="labelText">Data e Hora *</span>
-          <input id="eventoDataHora" type="datetime-local" required aria-required="true">
-        </label>
-      </div>
-
-      <div class="formGroup">
-        <label class="inputLabel">
-          <span class="labelText">Escola vinculada</span>
-          <select id="eventoEscola" aria-label="Escola vinculada ao evento">
-            <option value="">— Nenhuma —</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="formGroup">
-        <label class="inputLabel">
-          <span class="labelText">Descrição / Observação</span>
-          <textarea id="eventoDescricao" placeholder="Descreva o evento..."></textarea>
-        </label>
-      </div>
-
-      <div id="eventoFormMsg" class="msg" role="status" aria-live="polite"></div>
-
-      <div class="actions">
-        <button type="submit" class="btn primary btnLarge">💾 Salvar</button>
-        <button type="button" id="btnCancelarEvento" class="btn btnSecondary">Cancelar</button>
-      </div>
-
-    </form>
-
-  </div>
-
-</div>
-
-<!-- MODAL DETALHE DO EVENTO -->
-
-<div id="modalEventoDetalhe" class="modal" role="dialog" aria-modal="true" aria-labelledby="detalheEventoTitle">
-
-  <div class="modalContent">
-
-    <div class="modalHeader">
-      <h3 id="detalheEventoTitle" class="modalTitle"></h3>
-      <button id="btnFecharDetalhe" class="btnCloseModal" aria-label="Fechar">✕</button>
-    </div>
-
-    <div id="detalheEventoBody"></div>
-
-    <div id="detalheEventoAcoes" class="actions" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"></div>
-
-    <div class="modalForm">
-
-      <h4 class="sectionSubtitle" style="margin-bottom:12px">💬 Comentários</h4>
-
-      <div id="detalheComentarios" class="comentariosLista"></div>
-
-      <label for="novoComentarioTexto" class="visuallyHidden">Novo comentário</label>
-      <textarea id="novoComentarioTexto" placeholder="Adicione um comentário..." aria-label="Novo comentário"></textarea>
-
-      <button id="btnSalvarComentario" class="btn primary btnLarge btnBlock" style="margin-top:10px">💬 Comentar</button>
-
-    </div>
-
-  </div>
 
 </div>
 
@@ -524,58 +320,6 @@ Histórico de Atendimento
         </div>
       </section>
 
-    </div>
-
-  </div>
-
-</div>
-
-<!-- MODAL NOVIDADES -->
-
-<div id="modalNovidades" class="modal" role="dialog" aria-modal="true" aria-labelledby="novidadesTitle">
-
-  <div class="modalContent modalNovidadesContent">
-
-    <div class="novidadesHeader">
-      <span class="novidadesBadge">✨ Novidade</span>
-      <h3 id="novidadesTitle" class="modalTitle" style="margin-top:10px">📅 Agenda Pessoal chegou!</h3>
-    </div>
-
-    <ul class="novidadesList">
-      <li>📅 <strong>Calendário mensal</strong> — visualize seus compromissos por dia</li>
-      <li>📋 <strong>Visualização em lista</strong> — todos os eventos em ordem cronológica</li>
-      <li>🏫 <strong>Vincule escolas</strong> — associe eventos a uma escola pelo CIE</li>
-      <li>🔗 <strong>Compartilhe sua agenda</strong> — outros usuários podem visualizar e comentar</li>
-      <li>💬 <strong>Comentários</strong> — interaja nos eventos compartilhados</li>
-    </ul>
-
-    <p class="novidadesHint">Acesse pela aba <strong>📅 Agenda</strong> no menu principal.</p>
-
-    <button id="btnFecharNovidades" class="btn primary btnLarge btnBlock" style="margin-top:20px">
-      Entendi, vamos lá! 🚀
-    </button>
-
-  </div>
-
-</div>
-
-<!-- MODAL COMPARTILHAR AGENDA -->
-
-<div id="modalCompartilhar" class="modal" role="dialog" aria-modal="true" aria-labelledby="compartilharTitle">
-
-  <div class="modalContent">
-
-    <div class="modalHeader">
-      <h3 id="compartilharTitle" class="modalTitle">🔗 Compartilhar Agenda</h3>
-      <button id="btnFecharCompartilhar" class="btnCloseModal" aria-label="Fechar">✕</button>
-    </div>
-
-    <p class="hint" style="margin-bottom:16px">Selecione os usuários que poderão visualizar e comentar na sua agenda:</p>
-
-    <div id="listaUsuariosCompartilhar" role="list"></div>
-
-    <div class="actions" style="margin-top:20px">
-      <button id="btnConfirmarCompartilhar" class="btn primary btnLarge">✔ Confirmar</button>
     </div>
 
   </div>
@@ -1123,6 +867,158 @@ Histórico de Atendimento
 
 </div>
 
+<!-- PÁGINA INVENTÁRIO -->
+
+<div id="page-inventario" style="display:none" role="tabpanel" aria-labelledby="inventario-tab">
+  <div class="wrap">
+    <h2 class="pageTitle"><span class="titleIcon">📦</span> Inventário de Equipamentos</h2>
+
+    <div class="card cardElevated searchCard">
+      <h3 class="sectionSubtitle"><span class="titleIcon">🔍</span> Buscar escola</h3>
+      <div class="searchBox">
+        <input type="search" id="searchInventario" placeholder="Digite nome, município ou CIE" aria-label="Buscar escola para inventário">
+      </div>
+    </div>
+
+    <div id="cardsInventario" class="cardsGrid" role="list"></div>
+  </div>
+</div>
+
+<!-- MODAL INVENTÁRIO DA ESCOLA -->
+
+<div id="modalInventario" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalInventarioSchool">
+  <div class="modalContent modalLarge">
+    <div class="modalHeader">
+      <h3 id="modalInventarioSchool" class="modalTitle"></h3>
+      <button id="btnFecharModalInventario" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="actions" style="margin-bottom:16px;margin-top:0">
+      <button id="btnNovoEquipamento" class="btn primary">➕ Novo Equipamento</button>
+    </div>
+
+    <div id="inventarioLista">
+      <div class="tableWrap">
+        <table class="modernTable" id="tabelaInventario">
+          <thead>
+            <tr>
+              <th scope="col">Tipo</th>
+              <th scope="col">Marca</th>
+              <th scope="col">Nº Série</th>
+              <th scope="col">Patrimônio</th>
+              <th scope="col">Status</th>
+              <th scope="col">Últ. Manutenção</th>
+              <th scope="col">Garantia</th>
+              <th scope="col">Observação</th>
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyInventario"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CADASTRAR / EDITAR EQUIPAMENTO -->
+
+<div id="modalEquipamento" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEquipamentoTitle">
+  <div class="modalContent modalLarge">
+    <div class="modalHeader">
+      <h3 id="modalEquipamentoTitle" class="modalTitle">Novo Equipamento</h3>
+      <button id="btnFecharModalEquipamento" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+
+    <form id="formEquipamento" class="form" novalidate>
+      <div class="formGrid">
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Tipo de Equipamento *</span>
+            <select id="equipTipo" required aria-required="true">
+              <option value="">— Selecione —</option>
+              <option>Computador</option>
+              <option>Notebook</option>
+              <option>Impressora</option>
+              <option>Projetor</option>
+              <option>TV</option>
+              <option>Ar-condicionado</option>
+              <option>Switch</option>
+              <option>Roteador</option>
+              <option>Estabilizador</option>
+              <option>Scanner</option>
+              <option>Outro</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Marca</span>
+            <input id="equipMarca" type="text" placeholder="Ex: Dell, HP, Samsung">
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Número de Série</span>
+            <input id="equipSerie" type="text" placeholder="Número de série">
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Nº Patrimônio</span>
+            <input id="equipPatrimonio" type="text" placeholder="Número de patrimônio">
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Status *</span>
+            <select id="equipStatus" required aria-required="true">
+              <option value="">— Selecione —</option>
+              <option>Bom</option>
+              <option>Regular</option>
+              <option>Ruim</option>
+              <option>Inativo</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Data Última Manutenção</span>
+            <input id="equipManutencao" type="date">
+          </label>
+        </div>
+
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Data Solicitação Garantia</span>
+            <input id="equipGarantia" type="date">
+          </label>
+        </div>
+
+      </div>
+
+      <div class="formGroup">
+        <label class="inputLabel">
+          <span class="labelText">Observação</span>
+          <textarea id="equipObs" rows="2" placeholder="Observações adicionais..."></textarea>
+        </label>
+      </div>
+
+      <div id="equipFormMsg" class="msg" role="status" aria-live="polite"></div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary btnLarge">💾 Salvar</button>
+        <button type="button" id="btnCancelarEquipamento" class="btn btnSecondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- PÁGINA CADASTRAR ESCOLAS -->
 
 <div id="page-cadastrar-escolas" style="display:none" role="tabpanel" aria-labelledby="cadastrar-escolas-tab">
@@ -1291,139 +1187,10 @@ Histórico de Atendimento
 
 </div>
 
-<!-- ============================================================ -->
-<!-- PÁGINA GAMES                                                  -->
-<!-- ============================================================ -->
-
-<div id="page-games" style="display:none" role="tabpanel" aria-labelledby="games-tab">
-<div class="wrap">
-
-  <div class="sistemaHeader">
-    <div class="sistemaHeaderContent">
-      <h2 class="pageTitle"><span class="titleIcon">🎮</span> Games</h2>
-      <p class="sistemaSubtitle">Relaxe um pouco — você merece!</p>
-    </div>
-  </div>
-
-  <!-- Seletor de jogos -->
-  <div id="gamesLobby" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:28px;">
-
-    <button class="card cardElevated gameCard" data-game="snake" onclick="URE_GAMES.openGame('snake')"
-      style="cursor:pointer;border:2px solid transparent;text-align:center;padding:28px 20px;transition:var(--transition);">
-      <div style="font-size:3rem;margin-bottom:12px;">🐍</div>
-      <h3 style="color:var(--text);font-size:1.1rem;margin-bottom:6px;">Snake</h3>
-      <p style="color:var(--text-secondary);font-size:.85rem;">Use as setas (ou deslize) para guiar a cobra</p>
-    </button>
-
-    <button class="card cardElevated gameCard" data-game="memory" onclick="URE_GAMES.openGame('memory')"
-      style="cursor:pointer;border:2px solid transparent;text-align:center;padding:28px 20px;transition:var(--transition);">
-      <div style="font-size:3rem;margin-bottom:12px;">🃏</div>
-      <h3 style="color:var(--text);font-size:1.1rem;margin-bottom:6px;">Jogo da Memória</h3>
-      <p style="color:var(--text-secondary);font-size:.85rem;">Encontre os pares antes do tempo acabar</p>
-    </button>
-
-  </div>
-
-  <!-- Área do jogo ativo -->
-  <div id="gamesArena" style="display:none;">
-    <div class="card cardElevated" style="padding:24px;">
-
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <h3 id="gamesArenaTitle" style="font-size:1.2rem;font-weight:700;color:var(--text);"></h3>
-        <button onclick="URE_GAMES.closeGame()"
-          class="btn btnSecondary" style="font-size:.85rem;">
-          ← Voltar aos jogos
-        </button>
-      </div>
-
-      <!-- SNAKE -->
-      <div id="gameSnake" style="display:none;flex-direction:column;align-items:center;gap:16px;">
-        <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;">
-          <div style="text-align:center;">
-            <span style="font-size:.8rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Pontuação</span>
-            <div id="snakeScore" style="font-size:2rem;font-weight:800;color:var(--primary);">0</div>
-          </div>
-          <div style="text-align:center;">
-            <span style="font-size:.8rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Recorde</span>
-            <div id="snakeHigh" style="font-size:2rem;font-weight:800;color:var(--success);">0</div>
-          </div>
-          <div style="text-align:center;">
-            <span style="font-size:.8rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Nível</span>
-            <div id="snakeLevel" style="font-size:2rem;font-weight:800;color:var(--text);">1</div>
-          </div>
-        </div>
-        <canvas id="snakeCanvas" width="360" height="360"
-          style="border:3px solid var(--border);border-radius:var(--radius-md);background:var(--border-soft);touch-action:none;max-width:100%;"></canvas>
-        <div style="display:flex;gap:10px;">
-          <button id="snakeStartBtn" class="btn primary" onclick="URE_GAMES.snakeStart()">▶ Iniciar</button>
-          <button class="btn btnSecondary" onclick="URE_GAMES.snakePause()">⏸ Pausar</button>
-        </div>
-        <!-- Controles mobile -->
-        <div id="snakeDpad" style="display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);gap:4px;touch-action:none;">
-          <div></div>
-          <button class="btn btnSecondary" style="width:48px;height:48px;font-size:1.2rem;padding:0;" onclick="URE_GAMES.snakeDir('up')">▲</button>
-          <div></div>
-          <button class="btn btnSecondary" style="width:48px;height:48px;font-size:1.2rem;padding:0;" onclick="URE_GAMES.snakeDir('left')">◄</button>
-          <button class="btn btnSecondary" style="width:48px;height:48px;font-size:1.2rem;padding:0;" onclick="URE_GAMES.snakeDir('down')">▼</button>
-          <button class="btn btnSecondary" style="width:48px;height:48px;font-size:1.2rem;padding:0;" onclick="URE_GAMES.snakeDir('right')">►</button>
-        </div>
-        <p style="font-size:.8rem;color:var(--text-secondary);text-align:center;">
-          Setas do teclado · D-pad acima · Deslize na tela
-        </p>
-      </div>
-
-      <!-- MEMÓRIA -->
-      <div id="gameMemory" style="display:none;flex-direction:column;align-items:center;gap:16px;">
-        <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center;">
-          <div style="text-align:center;">
-            <span style="font-size:.8rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Jogadas</span>
-            <div id="memoryMoves" style="font-size:2rem;font-weight:800;color:var(--primary);">0</div>
-          </div>
-          <div style="text-align:center;">
-            <span style="font-size:.8rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Pares</span>
-            <div id="memoryPairs" style="font-size:2rem;font-weight:800;color:var(--success);">0/8</div>
-          </div>
-          <div style="text-align:center;">
-            <span style="font-size:.8rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;">Tempo</span>
-            <div id="memoryTimer" style="font-size:2rem;font-weight:800;color:var(--text);">0s</div>
-          </div>
-        </div>
-        <div id="memoryBoard"
-          style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:380px;width:100%;">
-        </div>
-        <button class="btn primary" onclick="URE_GAMES.memoryStart()">🔀 Nova partida</button>
-      </div>
-
-    </div>
-  </div>
-
-</div>
-</div>
-
-<!-- ============================================================ -->
-<!-- LÓGICA DOS GAMES (não modifica nada do sistema existente)    -->
-<!-- ============================================================ -->
+<!-- GAMES REMOVIDO -->
 <script>
 (function(){
 'use strict';
-
-/* ---------- namespace global para os jogos ---------- */
-window.URE_GAMES = {};
-const G = window.URE_GAMES;
-
-/* ==================== UTILITÁRIOS ==================== */
-function qs(id){ return document.getElementById(id); }
-
-G.openGame = function(name){
-  qs('gamesLobby').style.display = 'none';
-  qs('gamesArena').style.display = 'block';
-  qs('gameSnake').style.display  = name === 'snake'  ? 'flex' : 'none';
-  qs('gameMemory').style.display = name === 'memory' ? 'flex' : 'none';
-  const titles = { snake:'🐍 Snake', memory:'🃏 Jogo da Memória' };
-  qs('gamesArenaTitle').textContent = titles[name] || '';
-  if(name === 'snake')  G.snakeInit();
-  if(name === 'memory') G.memoryStart();
-};
 
 G.closeGame = function(){
   G.snakeStop();

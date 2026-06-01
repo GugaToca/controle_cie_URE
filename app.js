@@ -365,15 +365,6 @@ onAuthStateChanged(auth, async (user)=>{
     await carregarListaTecnicosCache();
     loadList();
 
-    const NOVIDADES_KEY = `novidadesAgenda_v1_${user.uid}`;
-    if(!localStorage.getItem(NOVIDADES_KEY)){
-      const modalNovidades = $("modalNovidades");
-      if(modalNovidades) modalNovidades.style.display = "flex";
-      $("btnFecharNovidades")?.addEventListener("click", ()=>{
-        modalNovidades.style.display = "none";
-        localStorage.setItem(NOVIDADES_KEY, "1");
-      });
-    }
 
   }else{
 
@@ -864,10 +855,6 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageHistorico = document.getElementById("page-historico");
 
     if(pageSistema) pageSistema.style.display = page === "sistema" ? "block" : "none";
-    if(pageHistorico) pageHistorico.style.display = page === "historico" ? "block" : "none";
-
-    const pageAgendaEl = document.getElementById("page-agenda");
-    if(pageAgendaEl) pageAgendaEl.style.display = page === "agenda" ? "block" : "none";
 
     const pageCamerasEl = document.getElementById("page-cameras");
     if(pageCamerasEl) pageCamerasEl.style.display = page === "cameras" ? "block" : "none";
@@ -875,20 +862,12 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageTecnicosEl = document.getElementById("page-tecnicos");
     if(pageTecnicosEl) pageTecnicosEl.style.display = page === "tecnicos" ? "block" : "none";
 
+    const pageInventarioEl = document.getElementById("page-inventario");
+    if(pageInventarioEl) pageInventarioEl.style.display = page === "inventario" ? "block" : "none";
+    if(page === "inventario") loadInventarioCards();
+
     const pageCadastrarEscolasEl = document.getElementById("page-cadastrar-escolas");
     if(pageCadastrarEscolasEl) pageCadastrarEscolasEl.style.display = page === "cadastrar-escolas" ? "block" : "none";
-
-    const pageGamesEl = document.getElementById("page-games");
-    if(pageGamesEl) pageGamesEl.style.display = page === "games" ? "block" : "none";
-    if(page !== "games" && window.URE_GAMES) window.URE_GAMES.snakeStop();
-
-    if(page === "historico"){
-      loadHistoricoCards();
-    }
-
-    if(page === "agenda"){
-      loadAgendaSelector().then(() => loadAgendaPage());
-    }
 
     if(page === "cameras"){
       loadCamerasPage();
@@ -2792,7 +2771,7 @@ formAdicionarEscolaVinculo?.addEventListener('submit', async (e) => {
 // Remover vínculo
 async function removerVinculoEscola(id) {
   if (!confirm('Remover o vínculo desta escola com o técnico?')) return;
-  
+
   try {
     await deleteDoc(doc(db, "escolas_tecnicos", id));
     if (tecnicoGerenciandoEscolas) {
@@ -2803,3 +2782,241 @@ async function removerVinculoEscola(id) {
     alert('Erro ao remover vínculo');
   }
 }
+
+/* ================= INVENTÁRIO ================= */
+
+let inventarioEscolas = [];
+let inventarioCIEAtual = null;
+let inventarioEditandoId = null;
+
+const searchInventario   = $("searchInventario");
+const cardsInventario    = $("cardsInventario");
+const modalInventario    = $("modalInventario");
+const modalInventarioSchool = $("modalInventarioSchool");
+const btnFecharModalInventario = $("btnFecharModalInventario");
+const btnNovoEquipamento = $("btnNovoEquipamento");
+const tbodyInventario    = $("tbodyInventario");
+
+const modalEquipamento       = $("modalEquipamento");
+const modalEquipamentoTitle  = $("modalEquipamentoTitle");
+const formEquipamento        = $("formEquipamento");
+const equipTipo              = $("equipTipo");
+const equipMarca             = $("equipMarca");
+const equipSerie             = $("equipSerie");
+const equipPatrimonio        = $("equipPatrimonio");
+const equipStatus            = $("equipStatus");
+const equipManutencao        = $("equipManutencao");
+const equipGarantia          = $("equipGarantia");
+const equipObs               = $("equipObs");
+const equipFormMsg           = $("equipFormMsg");
+const btnFecharModalEquipamento = $("btnFecharModalEquipamento");
+const btnCancelarEquipamento = $("btnCancelarEquipamento");
+
+async function loadInventarioCards() {
+  if (!cardsInventario) return;
+
+  if (inventarioEscolas.length === 0) {
+    const snap = await getDocs(query(collection(db, "escolas"), orderBy("nomeLower")));
+    inventarioEscolas = [];
+    snap.forEach(d => inventarioEscolas.push(d.data()));
+  }
+
+  renderInventarioCards(inventarioEscolas);
+}
+
+function renderInventarioCards(lista) {
+  if (!cardsInventario) return;
+
+  if (lista.length === 0) {
+    cardsInventario.innerHTML = `<div class="msg err">Nenhuma escola encontrada</div>`;
+    return;
+  }
+
+  let html = "";
+  lista.forEach(s => {
+    html += `
+      <div class="cardSchool" data-cie="${escapeHtml(s.cie)}">
+        <strong>${escapeHtml(s.nome)}</strong><br>
+        CIE: ${escapeHtml(s.cie)}<br>
+        ${escapeHtml(s.municipio)}
+      </div>`;
+  });
+
+  cardsInventario.innerHTML = html;
+
+  cardsInventario.querySelectorAll(".cardSchool").forEach(card => {
+    card.addEventListener("click", () => abrirInventario(card.dataset.cie));
+  });
+}
+
+searchInventario?.addEventListener("input", () => {
+  const term = (searchInventario.value || "").toLowerCase().trim();
+  if (!term) { renderInventarioCards(inventarioEscolas); return; }
+
+  renderInventarioCards(inventarioEscolas.filter(s =>
+    (s.nome || "").toLowerCase().includes(term) ||
+    (s.municipio || "").toLowerCase().includes(term) ||
+    (s.cie || "").includes(term)
+  ));
+});
+
+async function abrirInventario(cie) {
+  inventarioCIEAtual = cie;
+
+  const snap = await getDoc(schoolDocRef(cie));
+  if (modalInventarioSchool) {
+    const s = snap.exists() ? snap.data() : null;
+    modalInventarioSchool.textContent = s ? `📦 ${s.nome} (CIE: ${s.cie})` : `CIE: ${cie}`;
+  }
+
+  if (modalInventario) modalInventario.style.display = "flex";
+  await carregarEquipamentos(cie);
+}
+
+async function carregarEquipamentos(cie) {
+  if (!tbodyInventario) return;
+
+  tbodyInventario.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-secondary)">Carregando...</td></tr>`;
+
+  try {
+    const q = query(collection(db, "escolas", cie, "inventario"), orderBy("tipo"));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      tbodyInventario.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-secondary)">Nenhum equipamento cadastrado</td></tr>`;
+      return;
+    }
+
+    const statusCor = { "Bom": "#10b981", "Regular": "#f59e0b", "Ruim": "#ef4444", "Inativo": "#94a3b8" };
+
+    let html = "";
+    snap.forEach(d => {
+      const eq = { id: d.id, ...d.data() };
+      const cor = statusCor[eq.status] || "var(--text-secondary)";
+      html += `
+        <tr>
+          <td data-label="Tipo">${escapeHtml(eq.tipo || "")}</td>
+          <td data-label="Marca">${escapeHtml(eq.marca || "—")}</td>
+          <td data-label="Nº Série">${escapeHtml(eq.numeroSerie || "—")}</td>
+          <td data-label="Patrimônio">${escapeHtml(eq.patrimonio || "—")}</td>
+          <td data-label="Status"><span style="color:${cor};font-weight:600">${escapeHtml(eq.status || "")}</span></td>
+          <td data-label="Últ. Manutenção">${escapeHtml(eq.dataManutencao || "—")}</td>
+          <td data-label="Garantia">${escapeHtml(eq.dataGarantia || "—")}</td>
+          <td data-label="Observação">${escapeHtml(eq.observacao || "")}</td>
+          <td>
+            <button class="btn btnSmall" data-edit-equip="${escapeHtml(eq.id)}">Editar</button>
+            <button class="btn btnSmall" data-del-equip="${escapeHtml(eq.id)}" style="background:var(--error);color:white">Excluir</button>
+          </td>
+        </tr>`;
+    });
+
+    tbodyInventario.innerHTML = html;
+
+    tbodyInventario.querySelectorAll("[data-edit-equip]").forEach(btn => {
+      btn.addEventListener("click", () => abrirFormEquipamento(btn.dataset.editEquip));
+    });
+
+    tbodyInventario.querySelectorAll("[data-del-equip]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Excluir este equipamento?")) return;
+        await deleteDoc(doc(db, "escolas", inventarioCIEAtual, "inventario", btn.dataset.delEquip));
+        await carregarEquipamentos(inventarioCIEAtual);
+      });
+    });
+
+  } catch(err) {
+    console.error(err);
+    tbodyInventario.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--error)">Erro ao carregar</td></tr>`;
+  }
+}
+
+async function abrirFormEquipamento(id) {
+  inventarioEditandoId = id || null;
+  formEquipamento?.reset();
+  setMsg(equipFormMsg, "", "");
+
+  if (id) {
+    if (modalEquipamentoTitle) modalEquipamentoTitle.textContent = "✏️ Editar Equipamento";
+    const snap = await getDoc(doc(db, "escolas", inventarioCIEAtual, "inventario", id));
+    if (snap.exists()) {
+      const eq = snap.data();
+      if (equipTipo) equipTipo.value = eq.tipo || "";
+      if (equipMarca) equipMarca.value = eq.marca || "";
+      if (equipSerie) equipSerie.value = eq.numeroSerie || "";
+      if (equipPatrimonio) equipPatrimonio.value = eq.patrimonio || "";
+      if (equipStatus) equipStatus.value = eq.status || "";
+      if (equipManutencao) equipManutencao.value = eq.dataManutencao || "";
+      if (equipGarantia) equipGarantia.value = eq.dataGarantia || "";
+      if (equipObs) equipObs.value = eq.observacao || "";
+    }
+  } else {
+    if (modalEquipamentoTitle) modalEquipamentoTitle.textContent = "➕ Novo Equipamento";
+  }
+
+  if (modalEquipamento) modalEquipamento.style.display = "flex";
+}
+
+btnNovoEquipamento?.addEventListener("click", () => abrirFormEquipamento(null));
+
+formEquipamento?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  setMsg(equipFormMsg, "", "");
+
+  const tipo = equipTipo?.value || "";
+  const status = equipStatus?.value || "";
+
+  if (!tipo) return setMsg(equipFormMsg, "Selecione o tipo de equipamento", "err");
+  if (!status) return setMsg(equipFormMsg, "Selecione o status", "err");
+
+  const dados = {
+    tipo,
+    marca: (equipMarca?.value || "").trim(),
+    numeroSerie: (equipSerie?.value || "").trim(),
+    patrimonio: (equipPatrimonio?.value || "").trim(),
+    status,
+    dataManutencao: equipManutencao?.value || "",
+    dataGarantia: equipGarantia?.value || "",
+    observacao: (equipObs?.value || "").trim(),
+    atualizadoEm: Date.now(),
+    atualizadoPor: currentUid()
+  };
+
+  try {
+    const col = collection(db, "escolas", inventarioCIEAtual, "inventario");
+    if (inventarioEditandoId) {
+      await setDoc(doc(db, "escolas", inventarioCIEAtual, "inventario", inventarioEditandoId), dados, { merge: true });
+    } else {
+      await addDoc(col, dados);
+    }
+
+    if (modalEquipamento) modalEquipamento.style.display = "none";
+    await carregarEquipamentos(inventarioCIEAtual);
+  } catch(err) {
+    console.error(err);
+    setMsg(equipFormMsg, "Erro ao salvar equipamento", "err");
+  }
+});
+
+btnFecharModalInventario?.addEventListener("click", () => {
+  if (modalInventario) modalInventario.style.display = "none";
+  inventarioCIEAtual = null;
+});
+
+modalInventario?.addEventListener("click", e => {
+  if (e.target === modalInventario) {
+    modalInventario.style.display = "none";
+    inventarioCIEAtual = null;
+  }
+});
+
+btnFecharModalEquipamento?.addEventListener("click", () => {
+  if (modalEquipamento) modalEquipamento.style.display = "none";
+});
+
+btnCancelarEquipamento?.addEventListener("click", () => {
+  if (modalEquipamento) modalEquipamento.style.display = "none";
+});
+
+modalEquipamento?.addEventListener("click", e => {
+  if (e.target === modalEquipamento) modalEquipamento.style.display = "none";
+});
