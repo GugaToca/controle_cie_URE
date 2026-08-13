@@ -866,6 +866,12 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     if(pageInventarioEl) pageInventarioEl.style.display = page === "inventario" ? "block" : "none";
     if(page === "inventario") loadInventarioCards();
 
+    // Termo de visitas: abre o sistema externo em vez de uma página interna.
+    if(page === "termo-visitas"){
+      window.location.href = "https://seintecriopreto.github.io/tecnicocampo/";
+      return;
+    }
+
     const pageCadastrarEscolasEl = document.getElementById("page-cadastrar-escolas");
     if(pageCadastrarEscolasEl) pageCadastrarEscolasEl.style.display = page === "cadastrar-escolas" ? "block" : "none";
 
