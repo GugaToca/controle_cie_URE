@@ -877,6 +877,9 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     if(pageCadastrarEscolasEl) pageCadastrarEscolasEl.style.display = page === "cadastrar-escolas" ? "block" : "none";
 
     const pageMybootEl = document.getElementById("page-myboot");
+    if(pageMybootEl) pageMybootEl.style.display = page === "myboot" ? "block" : "none";
+
+    const pageMybootEl = document.getElementById("page-myboot");
     if(pageMybootEl){
       pageMybootEl.style.setProperty(
         "display",
