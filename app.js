@@ -877,11 +877,18 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     if(pageCadastrarEscolasEl) pageCadastrarEscolasEl.style.display = page === "cadastrar-escolas" ? "block" : "none";
 
     const pageMybootEl = document.getElementById("page-myboot");
-    if(pageMybootEl) pageMybootEl.style.display = page === "myboot" ? "block" : "none";
+    if(pageMybootEl){
+      pageMybootEl.style.setProperty(
+        "display",
+        page === "myboot" ? "block" : "none",
+        "important"
+      );
+      pageMybootEl.setAttribute("aria-hidden", page === "myboot" ? "false" : "true");
+    }
 
     if(page === "myboot"){
-    carregarMyBoot();
-   }
+      carregarMyBoot();
+    }
 
     if(page === "cameras"){
       loadCamerasPage();
