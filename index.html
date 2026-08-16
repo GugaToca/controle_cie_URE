@@ -1222,6 +1222,10 @@ Importar em massa
 
 var G = window.G || (window.G = {});
 
+var qs = window.qs || function(id) {
+    return document.getElementById(id);
+};
+
 G.closeGame = function(){
   G.snakeStop();
   G.memoryStop();
