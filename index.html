@@ -1537,6 +1537,66 @@ function memVictory(){
 <script type="module" src="app.js"></script>
 
 <script>
+document.addEventListener('DOMContentLoaded', async function () {
+
+    const container = document.getElementById('myboot-app');
+
+    if (!container) return;
+
+    try {
+
+        const resposta = await fetch('myboot/conteudo.html', {
+            cache: 'no-store'
+        });
+
+        if (!resposta.ok) {
+            throw new Error('HTTP ' + resposta.status);
+        }
+
+        container.innerHTML = await resposta.text();
+
+        const script = document.createElement('script');
+
+        script.src = 'myboot/app.js';
+
+        script.onload = function () {
+
+            if (typeof window.iniciarMyBoot === 'function') {
+
+                window.iniciarMyBoot();
+
+                console.log('MyBoot iniciado com sucesso');
+
+            } else {
+
+                console.error('iniciarMyBoot não foi encontrado');
+
+            }
+
+        };
+
+        script.onerror = function () {
+            console.error('Não foi possível carregar myboot/app.js');
+        };
+
+        document.body.appendChild(script);
+
+    } catch (erro) {
+
+        console.error('Erro ao carregar Meu Boot:', erro);
+
+        container.innerHTML =
+            '<div style="padding:20px;color:#b91c1c">' +
+            'Não foi possível carregar o Meu Boot.<br>' +
+            erro.message +
+            '</div>';
+
+    }
+
+});
+</script>
+
+<script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
       .catch(err => console.warn('SW:', err));
