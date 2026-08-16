@@ -21,6 +21,13 @@
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
+<!-- Helper DOM global: compatibilidade com módulos e scripts legados -->
+<script>
+  window.qs = window.qs || function(id) {
+    return document.getElementById(id);
+  };
+</script>
+
 </head>
 <body>
 
@@ -1222,15 +1229,17 @@ Importar em massa
 
 var G = window.G || (window.G = {});
 
-var qs = window.qs || function(id) {
-    return document.getElementById(id);
-};
+var qs = window.qs;
 
 G.closeGame = function(){
   G.snakeStop();
   G.memoryStop();
-  qs('gamesArena').style.display = 'none';
-  qs('gamesLobby').style.display = 'grid';
+
+  var arena = qs('gamesArena');
+  var lobby = qs('gamesLobby');
+
+  if (arena) arena.style.display = 'none';
+  if (lobby) lobby.style.display = 'grid';
 };
 
 /* ====================== SNAKE ====================== */
@@ -1542,15 +1551,21 @@ function memVictory(){
 
 <script type="module" src="app.js"></script>
 
+<!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>
 document.addEventListener('DOMContentLoaded', async function () {
-
     const container = document.getElementById('myboot-app');
 
     if (!container) return;
 
-    try {
+    /* Evita carregar o MyBoot mais de uma vez */
+    if (container.dataset.loaded === 'true' || container.dataset.loading === 'true') {
+        return;
+    }
 
+    container.dataset.loading = 'true';
+
+    try {
         const resposta = await fetch('myboot/conteudo.html', {
             cache: 'no-store'
         });
@@ -1560,35 +1575,42 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         container.innerHTML = await resposta.text();
+        container.dataset.loaded = 'true';
 
-        const script = document.createElement('script');
+        /* Evita duplicar o script caso o navegador/estrutura já o tenha carregado */
+        if (!document.querySelector('script[data-myboot-script="true"]')) {
+            const script = document.createElement('script');
 
-        script.src = 'myboot/app.js';
+            script.src = 'myboot/app.js';
+            script.dataset.mybootScript = 'true';
 
-        script.onload = function () {
+            script.onload = function () {
+                if (typeof window.iniciarMyBoot === 'function') {
+                    try {
+                        window.iniciarMyBoot();
+                        console.log('MyBoot iniciado com sucesso');
+                    } catch (erro) {
+                        console.error('Erro ao iniciar o Meu Boot:', erro);
+                    }
+                } else {
+                    console.error('iniciarMyBoot não foi encontrado');
+                }
+            };
 
-            if (typeof window.iniciarMyBoot === 'function') {
+            script.onerror = function () {
+                console.error('Não foi possível carregar myboot/app.js');
+            };
 
+            document.body.appendChild(script);
+        } else if (typeof window.iniciarMyBoot === 'function') {
+            try {
                 window.iniciarMyBoot();
-
-                console.log('MyBoot iniciado com sucesso');
-
-            } else {
-
-                console.error('iniciarMyBoot não foi encontrado');
-
+            } catch (erro) {
+                console.error('Erro ao iniciar o Meu Boot:', erro);
             }
-
-        };
-
-        script.onerror = function () {
-            console.error('Não foi possível carregar myboot/app.js');
-        };
-
-        document.body.appendChild(script);
+        }
 
     } catch (erro) {
-
         console.error('Erro ao carregar Meu Boot:', erro);
 
         container.innerHTML =
@@ -1597,8 +1619,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             erro.message +
             '</div>';
 
+    } finally {
+        delete container.dataset.loading;
     }
-
 });
 </script>
 
@@ -1608,8 +1631,6 @@ document.addEventListener('DOMContentLoaded', async function () {
       .catch(err => console.warn('SW:', err));
   }
 </script>
-
-</div>
 
 </body>
 </html>
