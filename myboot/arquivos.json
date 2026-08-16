@@ -1,0 +1,6 @@
+{
+  "_leiaMe": "Arquivos pequenos que voce sobe para a pasta arquivos/ e quer que apareçam na pagina inicial. Deixe a lista vazia para esconder a secao. Nao use isso para imagens de varios GB - elas ficam no R2 e sao listadas no catalogo.json.",
+
+  "arquivos": [
+  ]
+}

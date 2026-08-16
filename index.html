@@ -19,6 +19,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
+<link rel="stylesheet" href="myboot/integracao.css">
 
 </head>
 <body>
@@ -99,6 +100,11 @@
 <button class="mainTab" data-page="termo-visitas" role="tab" aria-selected="false" aria-label="Termo de visitas">
 <span class="tabIcon">📝</span>
 <span>Termo de visitas</span>
+</button>
+
+<button class="mainTab" data-page="myboot" role="tab" aria-selected="false" aria-label="MyBoot">
+    <span class="tabIcon">💿</span>
+    <span>Meu Boot</span>
 </button>
 
 <button class="mainTab" data-page="cadastrar-escolas" role="tab" aria-selected="false" aria-controls="page-cadastrar-escolas">
@@ -1117,6 +1123,23 @@ Importar em massa
 
   </div>
 
+</div>
+
+<!-- PÁGINA MYBOOT -->
+<div id="page-myboot" style="display:none" role="tabpanel" aria-labelledby="myboot-tab">
+    <div class="wrap">
+        <div class="sistemaHeader">
+            <div class="sistemaHeaderContent">
+                <h2 class="pageTitle">
+                    <span class="titleIcon">💿</span>
+                    Meu Boot
+                </h2>
+                <p class="sistemaSubtitle">Ferramenta de instalação e preparação de computadores</p>
+            </div>
+        </div>
+
+        <div id="myboot-app"></div>
+    </div>
 </div>
 
 <!-- MODAL CADASTRAR NOVA ESCOLA (mantido para compatibilidade) -->

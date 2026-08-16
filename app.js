@@ -872,8 +872,16 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
       return;
     }
 
+
     const pageCadastrarEscolasEl = document.getElementById("page-cadastrar-escolas");
     if(pageCadastrarEscolasEl) pageCadastrarEscolasEl.style.display = page === "cadastrar-escolas" ? "block" : "none";
+
+    const pageMybootEl = document.getElementById("page-myboot");
+    if(pageMybootEl) pageMybootEl.style.display = page === "myboot" ? "block" : "none";
+
+    if(page === "myboot"){
+    carregarMyBoot();
+   }
 
     if(page === "cameras"){
       loadCamerasPage();
@@ -3026,3 +3034,51 @@ btnCancelarEquipamento?.addEventListener("click", () => {
 modalEquipamento?.addEventListener("click", e => {
   if (e.target === modalEquipamento) modalEquipamento.style.display = "none";
 });
+
+
+
+
+
+async function carregarMyBoot(){
+    const container = document.getElementById("myboot-app");
+
+    if(!container) return;
+
+    try{
+        const resposta = await fetch("myboot/conteudo.html");
+
+        if(!resposta.ok){
+            throw new Error("Não foi possível carregar o conteúdo do MyBoot.");
+        }
+
+        container.innerHTML = await resposta.text();
+
+if(!window.myBootCarregado){
+    const script = document.createElement("script");
+    script.src = "myboot/app.js";
+
+    script.onload = function(){
+        window.myBootCarregado = true;
+
+        if(window.iniciarMyBoot){
+            window.iniciarMyBoot();
+        }
+    };
+
+    document.body.appendChild(script);
+}else{
+    if(window.iniciarMyBoot){
+        window.iniciarMyBoot();
+    }
+}
+
+}catch(erro){
+        console.error("Erro ao carregar MyBoot:", erro);
+
+        container.innerHTML = `
+            <div class="myboot-vazio">
+                Não foi possível carregar o MyBoot.
+            </div>
+        `;
+    }
+}
