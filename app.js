@@ -879,19 +879,9 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageMybootEl = document.getElementById("page-myboot");
     if(pageMybootEl) pageMybootEl.style.display = page === "myboot" ? "block" : "none";
 
-    const pageMybootEl = document.getElementById("page-myboot");
-    if(pageMybootEl){
-      pageMybootEl.style.setProperty(
-        "display",
-        page === "myboot" ? "block" : "none",
-        "important"
-      );
-      pageMybootEl.setAttribute("aria-hidden", page === "myboot" ? "false" : "true");
-    }
-
     if(page === "myboot"){
-      carregarMyBoot();
-    }
+    carregarMyBoot();
+   }
 
     if(page === "cameras"){
       loadCamerasPage();
@@ -3053,42 +3043,59 @@ async function carregarMyBoot(){
     const container = document.getElementById("myboot-app");
 
     if(!container) return;
+    if(container.dataset.loading === "true") return;
+
+    container.dataset.loading = "true";
 
     try{
-        const resposta = await fetch("myboot/conteudo.html");
+        /* Se o index.html já carregou o conteúdo, reutiliza o que existe. */
+        if(!container.innerHTML.trim()){
+            const resposta = await fetch("myboot/conteudo.html", {
+                cache: "no-store"
+            });
 
-        if(!resposta.ok){
-            throw new Error("Não foi possível carregar o conteúdo do MyBoot.");
+            if(!resposta.ok){
+                throw new Error("HTTP " + resposta.status);
+            }
+
+            container.innerHTML = await resposta.text();
         }
 
-        container.innerHTML = await resposta.text();
+        /* Não duplica o script do MyBoot caso ele já esteja carregado. */
+        const scriptMyBoot = document.querySelector('script[data-myboot-script="true"]');
 
-if(!window.myBootCarregado){
-    const script = document.createElement("script");
-    script.src = "myboot/app.js";
+        if(!scriptMyBoot && typeof window.iniciarMyBoot !== "function"){
+            const script = document.createElement("script");
+            script.src = "myboot/app.js";
+            script.dataset.mybootScript = "true";
 
-    script.onload = function(){
-        window.myBootCarregado = true;
+            script.onload = function(){
+                window.myBootCarregado = true;
 
-        if(window.iniciarMyBoot){
+                if(typeof window.iniciarMyBoot === "function"){
+                    window.iniciarMyBoot();
+                }
+            };
+
+            script.onerror = function(){
+                console.error("Não foi possível carregar myboot/app.js");
+            };
+
+            document.body.appendChild(script);
+        }else if(typeof window.iniciarMyBoot === "function"){
             window.iniciarMyBoot();
         }
-    };
 
-    document.body.appendChild(script);
-}else{
-    if(window.iniciarMyBoot){
-        window.iniciarMyBoot();
-    }
-}
-
-}catch(erro){
+    }catch(erro){
         console.error("Erro ao carregar MyBoot:", erro);
 
         container.innerHTML = `
             <div class="myboot-vazio">
-                Não foi possível carregar o MyBoot.
+                Não foi possível carregar o MyBoot.<br>
+                ${String(erro.message || erro)}
             </div>
         `;
+    }finally{
+        delete container.dataset.loading;
     }
 }

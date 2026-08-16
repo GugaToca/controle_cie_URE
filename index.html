@@ -1549,7 +1549,7 @@ function memVictory(){
 })(); // IIFE fim
 </script>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="app.js?v=20260816-01"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>
@@ -1566,7 +1566,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     container.dataset.loading = 'true';
 
     try {
-        const resposta = await fetch('myboot/conteudo.html', {
+        const resposta = await fetch('myboot/conteudo.html?v=20260816-01', {
             cache: 'no-store'
         });
 
@@ -1581,7 +1581,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!document.querySelector('script[data-myboot-script="true"]')) {
             const script = document.createElement('script');
 
-            script.src = 'myboot/app.js';
+            script.src = 'myboot/app.js?v=20260816-01';
             script.dataset.mybootScript = 'true';
 
             script.onload = function () {
