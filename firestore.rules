@@ -52,14 +52,43 @@ service cloud.firestore {
     // Técnicos - Controle de Visitas
     match /tecnicos_escolas/{id} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && 
-                              request.auth.uid == resource.data.tecnicoUid;
+      // Qualquer técnico continua podendo criar sua própria escola.
+      allow create: if request.auth != null &&
+                       (request.resource.data.tecnicoUid == request.auth.uid ||
+                        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
+      // Edição/exclusão normal continua limitada ao responsável;
+      // remanejamentos são permitidos somente ao Administrador.
+      allow update, delete: if request.auth != null &&
+                              (request.auth.uid == resource.data.tecnicoUid ||
+                               get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
     }
 
     // Escolas atribuídas aos técnicos
+    // Esta coleção representa o vínculo de distribuição e, portanto,
+    // mudanças de técnico ficam restritas ao Administrador.
     match /escolas_tecnicos/{id} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+                       (request.resource.data.tecnicoUid == request.auth.uid ||
+                        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
+      allow update, delete: if request.auth != null &&
+                              (request.auth.uid == resource.data.tecnicoUid ||
+                               get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
+    }
+
+    // Notificações de remanejamento
+    match /notificacoes/{id} {
+      allow read: if request.auth != null && resource.data.usuarioUid == request.auth.uid;
+      allow create: if request.auth != null &&
+                       get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador";
+      allow update: if request.auth != null && resource.data.usuarioUid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Histórico de remanejamentos, somente para Administrador
+    match /remanejamentos/{id} {
+      allow read, write: if request.auth != null &&
+                           get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador";
     }
 
   }

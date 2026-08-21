@@ -122,6 +122,8 @@
 
 <div id="page-sistema" style="display:block" role="tabpanel" aria-labelledby="sistema-tab">
 
+<div id="notificacoesUsuario" class="wrap notificacoesUsuario" style="display:none"></div>
+
 <div class="wrap">
 
   <!-- Busca Compacta -->
@@ -343,6 +345,53 @@ Importar em massa
 <!-- PÁGINA TÉCNICOS - GUIAS POR TÉCNICO -->
 
 <div id="page-tecnicos" style="display:none" role="tabpanel" aria-labelledby="tecnicos-tab">
+
+  <!-- PAINEL EXCLUSIVO DO ADMINISTRADOR -->
+  <div id="adminRemanejamentoPanel" class="wrap adminRemanejamentoPanel" style="display:none">
+    <section class="card cardElevated adminRemanejamentoCard">
+      <div class="adminRemanejamentoHeader">
+        <div>
+          <span class="adminEyebrow">👑 ADMINISTRADOR</span>
+          <h2>Remanejamento de Escolas</h2>
+          <p>Transfira uma ou várias escolas entre técnicos. Os envolvidos receberão um aviso ao entrar no sistema.</p>
+        </div>
+      </div>
+
+      <div class="adminRemanejamentoGrid">
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">De qual técnico?</span>
+            <select id="adminTecnicoOrigem">
+              <option value="">— Selecione —</option>
+            </select>
+          </label>
+        </div>
+        <div class="formGroup">
+          <label class="inputLabel">
+            <span class="labelText">Para qual técnico?</span>
+            <select id="adminTecnicoDestino">
+              <option value="">— Selecione —</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="adminEscolasToolbar">
+        <strong>🏫 Escolas do técnico de origem</strong>
+        <label class="adminSelectAll"><input type="checkbox" id="adminSelecionarTodas"> Selecionar todas</label>
+        <button id="btnCarregarEscolasRemanejamento" class="btn btnSecondary btnSmall">🔄 Atualizar</button>
+      </div>
+
+      <div id="adminEscolasLista" class="adminEscolasLista">
+        <div class="adminEmptyState">Selecione o técnico de origem para carregar as escolas.</div>
+      </div>
+
+      <div id="adminRemanejamentoMsg" class="msg" role="status" aria-live="polite"></div>
+      <div class="adminRemanejamentoActions">
+        <button id="btnTransferirEscolas" class="btn primary btnLarge">↔️ Transferir escolas selecionadas</button>
+      </div>
+    </section>
+  </div>
 
   <div class="tecnicosPageContainer">
 

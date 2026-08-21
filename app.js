@@ -15,7 +15,8 @@ import {
   query,
   orderBy,
   addDoc,
-  where
+  where,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 import {
@@ -41,6 +42,9 @@ const db = initializeFirestore(app, {
 });
 
 const auth = getAuth(app);
+
+let perfilUsuarioAtual = null;
+let usuarioAtualDoc = null;
 
 /* ================= DOM ================= */
 
@@ -359,11 +363,13 @@ onAuthStateChanged(auth, async (user)=>{
       userDisplay.textContent = getUserFirstName();
     }
 
-    registrarUsuario(user);
+    await registrarUsuario(user);
+    await carregarPerfilUsuario(user);
     
     // Carregar lista de técnicos antes de carregar escolas
     await carregarListaTecnicosCache();
     loadList();
+    await carregarNotificacoesUsuario();
 
 
   }else{
@@ -1156,6 +1162,27 @@ async function registrarUsuario(user){
       nome: getUserFirstName()
     },{ merge:true });
   }catch(e){ console.error("registrarUsuario",e); }
+}
+
+async function carregarPerfilUsuario(user){
+  try{
+    const snap = await getDoc(doc(db, "usuarios", user.uid));
+    usuarioAtualDoc = snap.exists() ? snap.data() : null;
+    perfilUsuarioAtual = usuarioAtualDoc?.perfil || "tecnico";
+    document.body.classList.toggle("usuarioAdministrador", perfilUsuarioAtual === "administrador");
+    const adminPanel = $("adminRemanejamentoPanel");
+    if (adminPanel) adminPanel.style.display = perfilUsuarioAtual === "administrador" ? "block" : "none";
+    if (perfilUsuarioAtual === "administrador") {
+      await carregarAdminTecnicos();
+    }
+  }catch(e){
+    console.error("carregarPerfilUsuario", e);
+    perfilUsuarioAtual = "tecnico";
+  }
+}
+
+function isAdministrador(){
+  return perfilUsuarioAtual === "administrador";
 }
 
 async function loadUsuarios(){
@@ -2794,6 +2821,265 @@ async function removerVinculoEscola(id) {
   } catch (err) {
     console.error(err);
     alert('Erro ao remover vínculo');
+  }
+}
+
+/* ================= ADMINISTRADOR - REMANEJAMENTO ================= */
+
+const adminRemanejamentoPanel = $("adminRemanejamentoPanel");
+const adminTecnicoOrigem = $("adminTecnicoOrigem");
+const adminTecnicoDestino = $("adminTecnicoDestino");
+const adminEscolasLista = $("adminEscolasLista");
+const adminRemanejamentoMsg = $("adminRemanejamentoMsg");
+const btnCarregarEscolasRemanejamento = $("btnCarregarEscolasRemanejamento");
+const btnTransferirEscolas = $("btnTransferirEscolas");
+const adminSelecionarTodas = $("adminSelecionarTodas");
+
+function nomeTecnicoAdmin(t){
+  return t?.nome || t?.email || t?.uid || "Técnico";
+}
+
+async function carregarAdminTecnicos(){
+  if (!isAdministrador() || !adminTecnicoOrigem || !adminTecnicoDestino) return;
+  try{
+    const snap = await getDocs(collection(db, "usuarios"));
+    const tecnicos = [];
+    snap.forEach(d => {
+      const u = d.data();
+      if (u.uid !== currentUid() && u.perfil !== "administrador") tecnicos.push(u);
+    });
+    tecnicos.sort((a,b) => nomeTecnicoAdmin(a).localeCompare(nomeTecnicoAdmin(b), "pt-BR"));
+
+    const options = '<option value="">— Selecione —</option>' + tecnicos.map(t =>
+      `<option value="${escapeHtml(t.uid)}">${escapeHtml(nomeTecnicoAdmin(t))}</option>`
+    ).join("");
+    adminTecnicoOrigem.innerHTML = options;
+    adminTecnicoDestino.innerHTML = options;
+    adminEscolasLista.innerHTML = '<div class="adminEmptyState">Selecione o técnico de origem para carregar as escolas.</div>';
+    setMsg(adminRemanejamentoMsg, '', '');
+  }catch(e){
+    console.error("carregarAdminTecnicos", e);
+    setMsg(adminRemanejamentoMsg, "Não foi possível carregar os técnicos.", "err");
+  }
+}
+
+async function carregarEscolasParaRemanejamento(){
+  if (!isAdministrador()) return;
+  const origem = adminTecnicoOrigem?.value;
+  if (!origem) {
+    adminEscolasLista.innerHTML = '<div class="adminEmptyState">Selecione um técnico de origem.</div>';
+    return;
+  }
+  try{
+    setMsg(adminRemanejamentoMsg, 'Carregando escolas...', '');
+    const snap = await getDocs(query(collection(db, "tecnicos_escolas"), where("tecnicoUid", "==", origem)));
+    const escolas = [];
+    snap.forEach(d => escolas.push({ id:d.id, ...d.data() }));
+    escolas.sort((a,b) => (a.escolaNome || '').localeCompare(b.escolaNome || '', 'pt-BR'));
+
+    if (!escolas.length){
+      adminEscolasLista.innerHTML = '<div class="adminEmptyState">Este técnico não possui escolas atribuídas.</div>';
+      setMsg(adminRemanejamentoMsg, '', '');
+      return;
+    }
+
+    adminEscolasLista.innerHTML = escolas.map(e => `
+      <label class="adminEscolaCheck">
+        <input type="checkbox" class="adminEscolaInput" value="${escapeHtml(e.id)}" data-cie="${escapeHtml(e.cie || '')}" data-nome="${escapeHtml(e.escolaNome || e.cie || 'Escola')}">
+        <span class="adminEscolaCheckInfo">
+          <strong>${escapeHtml(e.escolaNome || e.cie || 'Escola')}</strong>
+          <small>CIE: ${escapeHtml(e.cie || 'Não informado')}</small>
+        </span>
+      </label>
+    `).join('');
+    setMsg(adminRemanejamentoMsg, `${escolas.length} escola(s) encontrada(s).`, 'ok');
+  }catch(e){
+    console.error("carregarEscolasParaRemanejamento", e);
+    setMsg(adminRemanejamentoMsg, "Erro ao carregar escolas do técnico.", "err");
+  }
+}
+
+adminTecnicoOrigem?.addEventListener('change', carregarEscolasParaRemanejamento);
+btnCarregarEscolasRemanejamento?.addEventListener('click', carregarEscolasParaRemanejamento);
+adminSelecionarTodas?.addEventListener('change', () => {
+  adminEscolasLista?.querySelectorAll('.adminEscolaInput').forEach(input => {
+    input.checked = adminSelecionarTodas.checked;
+  });
+});
+
+btnTransferirEscolas?.addEventListener('click', async () => {
+  if (!isAdministrador()) {
+    setMsg(adminRemanejamentoMsg, 'Apenas o Administrador pode remanejar escolas.', 'err');
+    return;
+  }
+
+  const origemUid = adminTecnicoOrigem?.value;
+  const destinoUid = adminTecnicoDestino?.value;
+  const selecionadas = [...(adminEscolasLista?.querySelectorAll('.adminEscolaInput:checked') || [])];
+
+  if (!origemUid || !destinoUid) return setMsg(adminRemanejamentoMsg, 'Selecione o técnico de origem e o técnico de destino.', 'err');
+  if (origemUid === destinoUid) return setMsg(adminRemanejamentoMsg, 'Origem e destino não podem ser o mesmo técnico.', 'err');
+  if (!selecionadas.length) return setMsg(adminRemanejamentoMsg, 'Selecione pelo menos uma escola para transferir.', 'err');
+
+  const origem = tecnicosLista.find(t => t.uid === origemUid) || {};
+  const destino = tecnicosLista.find(t => t.uid === destinoUid) || {};
+  const origemNome = nomeTecnicoAdmin(origem);
+  const destinoNome = nomeTecnicoAdmin(destino);
+
+  if (!confirm(`Transferir ${selecionadas.length} escola(s) de ${origemNome} para ${destinoNome}?`)) return;
+
+  try{
+    btnTransferirEscolas.disabled = true;
+    setMsg(adminRemanejamentoMsg, 'Realizando remanejamento...', '');
+
+    const batch = writeBatch(db);
+    const agora = Date.now();
+    const escolasTransferidas = [];
+
+    for (const input of selecionadas){
+      const id = input.value;
+      const cie = input.dataset.cie || '';
+      const nome = input.dataset.nome || cie || 'Escola';
+      const ref = doc(db, "tecnicos_escolas", id);
+      batch.set(ref, {
+        tecnicoUid: destinoUid,
+        tecnicoNome: destinoNome,
+        remanejadoEm: agora,
+        remanejadoPor: currentUid(),
+        remanejadoPorNome: getUserFirstName()
+      }, { merge: true });
+      escolasTransferidas.push({ id, cie, nome });
+    }
+
+    // Mantém a coleção de vínculos legada sincronizada, quando existir.
+    for (const escola of escolasTransferidas){
+      if (!escola.cie) continue;
+      const vinculosSnap = await getDocs(query(collection(db, "escolas_tecnicos"), where("cie", "==", escola.cie)));
+      vinculosSnap.forEach(d => {
+        batch.set(doc(db, "escolas_tecnicos", d.id), {
+          tecnicoUid: destinoUid,
+          tecnicoNome: destinoNome,
+          atualizadoEm: agora,
+          atualizadoPor: currentUid()
+        }, { merge: true });
+      });
+    }
+
+    // Notificação para quem recebeu a escola.
+    const notifDestinoRef = doc(collection(db, "notificacoes"));
+    batch.set(notifDestinoRef, {
+      usuarioUid: destinoUid,
+      tipo: "remanejamento_escolas",
+      titulo: "Escolas remanejadas para você",
+      mensagem: `${escolasTransferidas.length} escola(s) foram adicionadas à sua carteira pelo Administrador.`,
+      escolas: escolasTransferidas.map(e => ({ cie:e.cie, nome:e.nome })),
+      tecnicoAnteriorUid: origemUid,
+      tecnicoAnteriorNome: origemNome,
+      tecnicoNovoUid: destinoUid,
+      tecnicoNovoNome: destinoNome,
+      realizadoPor: currentUid(),
+      realizadoPorNome: getUserFirstName(),
+      dataCriacao: agora,
+      visualizado: false
+    });
+
+    // Notificação para quem perdeu a escola.
+    const notifOrigemRef = doc(collection(db, "notificacoes"));
+    batch.set(notifOrigemRef, {
+      usuarioUid: origemUid,
+      tipo: "remanejamento_escolas",
+      titulo: "Escolas remanejadas",
+      mensagem: `${escolasTransferidas.length} escola(s) foram transferidas da sua carteira para ${destinoNome}.`,
+      escolas: escolasTransferidas.map(e => ({ cie:e.cie, nome:e.nome })),
+      tecnicoAnteriorUid: origemUid,
+      tecnicoAnteriorNome: origemNome,
+      tecnicoNovoUid: destinoUid,
+      tecnicoNovoNome: destinoNome,
+      realizadoPor: currentUid(),
+      realizadoPorNome: getUserFirstName(),
+      dataCriacao: agora,
+      visualizado: false
+    });
+
+    const historicoRef = doc(collection(db, "remanejamentos"));
+    batch.set(historicoRef, {
+      tecnicoAnteriorUid: origemUid,
+      tecnicoAnteriorNome: origemNome,
+      tecnicoNovoUid: destinoUid,
+      tecnicoNovoNome: destinoNome,
+      escolas: escolasTransferidas.map(e => ({ id:e.id, cie:e.cie, nome:e.nome })),
+      quantidade: escolasTransferidas.length,
+      realizadoPor: currentUid(),
+      realizadoPorNome: getUserFirstName(),
+      dataCriacao: agora
+    });
+
+    await batch.commit();
+
+    setMsg(adminRemanejamentoMsg, `${escolasTransferidas.length} escola(s) transferida(s) com sucesso para ${destinoNome}.`, 'ok');
+    adminSelecionarTodas.checked = false;
+    await carregarEscolasParaRemanejamento();
+    await carregarListaTecnicosCache();
+    await carregarListaTecnicos();
+  }catch(e){
+    console.error("transferirEscolas", e);
+    setMsg(adminRemanejamentoMsg, `Erro ao remanejar escolas: ${e.message || 'verifique as permissões do Firebase.'}`, 'err');
+  }finally{
+    btnTransferirEscolas.disabled = false;
+  }
+});
+
+async function carregarNotificacoesUsuario(){
+  const container = $("notificacoesUsuario");
+  if (!container || !currentUid()) return;
+  try{
+    const q = query(
+      collection(db, "notificacoes"),
+      where("usuarioUid", "==", currentUid())
+    );
+    const snap = await getDocs(q);
+    const notificacoes = [];
+    snap.forEach(d => notificacoes.push({ id:d.id, ...d.data() }));
+    notificacoes.sort((a,b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
+
+    if (!notificacoes.length){
+      container.innerHTML = '';
+      container.style.display = 'none';
+      return;
+    }
+
+    const naoLidas = notificacoes.filter(n => !n.visualizado);
+    container.style.display = 'block';
+    container.innerHTML = `
+      <div class="notificacaoCardHeader">
+        <div><span class="notificacaoIcon">🔔</span><strong>Atualizações da sua carteira</strong></div>
+        ${naoLidas.length ? `<span class="notificacaoBadge">${naoLidas.length} nova(s)</span>` : ''}
+      </div>
+      <div class="notificacaoLista">
+        ${notificacoes.slice(0, 5).map(n => `
+          <div class="notificacaoItem ${n.visualizado ? '' : 'nova'}">
+            <div class="notificacaoItemTitle">${escapeHtml(n.titulo || 'Atualização')}</div>
+            <div class="notificacaoItemMsg">${escapeHtml(n.mensagem || '')}</div>
+            ${Array.isArray(n.escolas) && n.escolas.length ? `<div class="notificacaoEscolas">${n.escolas.map(e => `<span>${escapeHtml(e.nome || e.cie || 'Escola')}</span>`).join('')}</div>` : ''}
+            <small>${n.dataCriacao ? new Date(n.dataCriacao).toLocaleString('pt-BR') : ''}</small>
+          </div>
+        `).join('')}
+      </div>
+      ${naoLidas.length ? `<button id="btnMarcarNotificacoesLidas" class="btn btnSecondary btnSmall">Marcar como lidas</button>` : ''}
+    `;
+
+    $("btnMarcarNotificacoesLidas")?.addEventListener('click', async () => {
+      try{
+        const batch = writeBatch(db);
+        naoLidas.forEach(n => batch.update(doc(db, "notificacoes", n.id), { visualizado:true, visualizadoEm:Date.now() }));
+        await batch.commit();
+        await carregarNotificacoesUsuario();
+      }catch(e){
+        console.error("marcarNotificacoesLidas", e);
+      }
+    });
+  }catch(e){
+    console.error("carregarNotificacoesUsuario", e);
   }
 }
 
