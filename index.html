@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css"/>
+<link rel="stylesheet" href="styles.css?v=20260821-admin04"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
@@ -122,6 +122,29 @@
 
 
 </nav>
+
+<style id="notificacoesModalCritical">
+/* Modal de atualização da carteira: estilos críticos inline para evitar cache do CSS. */
+.notificacoesModal{position:fixed!important;inset:0!important;z-index:99999!important;display:none;align-items:center!important;justify-content:center!important;padding:clamp(12px,3vw,28px)!important;background:rgba(15,23,42,.58)!important;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-sizing:border-box;}
+.notificacoesModalBackdrop{position:absolute!important;inset:0!important;background:transparent!important;}
+.notificacoesModalCard{position:relative!important;z-index:1!important;width:min(680px,100%)!important;max-height:min(82vh,760px)!important;overflow:auto!important;background:#fff!important;color:#0f172a!important;border:1px solid rgba(37,99,235,.16)!important;border-radius:22px!important;box-shadow:0 24px 80px rgba(15,23,42,.35)!important;padding:0!important;animation:notificacaoModalEntradaV2 .2s ease-out!important;box-sizing:border-box!important;}
+.notificacoesModalHeader{display:flex!important;align-items:center!important;gap:14px!important;padding:22px 24px 18px!important;border-bottom:1px solid #e5e7eb!important;background:linear-gradient(180deg,#eff6ff 0%,#fff 100%)!important;}
+.notificacoesModalHeader>div{display:flex!important;align-items:center!important;gap:13px!important;}
+.notificacaoIconLarge{display:grid!important;place-items:center!important;width:48px!important;height:48px!important;flex:0 0 48px!important;border-radius:14px!important;background:#dbeafe!important;font-size:1.55rem!important;line-height:1!important;}
+.notificacaoModalEyebrow{display:block!important;font-size:.72rem!important;font-weight:800!important;letter-spacing:.08em!important;color:#2563eb!important;margin-bottom:4px!important;}
+.notificacoesModalHeader h2{margin:0!important;font-size:clamp(1.15rem,3vw,1.4rem)!important;line-height:1.2!important;}
+.notificacoesModalConteudo{display:grid!important;gap:12px!important;padding:20px 24px 4px!important;}
+.notificacaoModalItem{padding:16px!important;border:1px solid #dbe5f4!important;border-radius:14px!important;background:#f8fbff!important;box-sizing:border-box!important;}
+.notificacaoModalItemTitle{font-weight:800!important;margin-bottom:6px!important;color:#0f172a!important;}
+.notificacaoModalItemMsg{opacity:.82!important;line-height:1.5!important;}
+.notificacaoModalItem small{display:block!important;margin-top:10px!important;opacity:.55!important;}
+.notificacaoEscolas{display:flex!important;flex-wrap:wrap!important;gap:7px!important;margin-top:12px!important;}
+.notificacaoEscolas span{font-size:.78rem!important;line-height:1.3!important;padding:6px 9px!important;border-radius:8px!important;background:#e8f0fe!important;color:#1e3a8a!important;}
+.notificacoesModalActions{display:flex!important;justify-content:flex-end!important;margin-top:18px!important;padding:0 24px 22px!important;}
+.notificacoesModalActions .btn{min-width:140px!important;}
+@keyframes notificacaoModalEntradaV2{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:600px){.notificacoesModal{padding:10px!important}.notificacoesModalCard{width:100%!important;max-height:90vh!important;border-radius:18px!important}.notificacoesModalHeader{padding:18px!important}.notificacoesModalConteudo{padding:16px 18px 4px!important}.notificacoesModalActions{padding:0 18px 18px!important}.notificacoesModalActions .btn{width:100%!important;min-height:46px!important}.notificacaoIconLarge{width:42px!important;height:42px!important;flex-basis:42px!important}.notificacaoEscolas span{font-size:.74rem!important}}
+</style>
 
 <!-- PÁGINA SISTEMA -->
 

@@ -2505,3 +2505,7 @@ body.colResizeActive { cursor: col-resize; user-select: none; }
     margin-left: 0;
   }
 }
+
+
+/* Evita rolagem da página por trás do modal de notificações. */
+body.notificacaoModalOpen { overflow:hidden; }

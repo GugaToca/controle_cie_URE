@@ -3134,6 +3134,7 @@ async function carregarNotificacoesUsuario(){
 
     if (!naoLidas.length){
       modal.style.display = 'none';
+      document.body.classList.remove('notificacaoModalOpen');
       conteudo.innerHTML = '';
       return;
     }
@@ -3150,6 +3151,7 @@ async function carregarNotificacoesUsuario(){
     `).join('');
 
     modal.style.display = 'flex';
+    document.body.classList.add('notificacaoModalOpen');
 
     // Evita acumular listeners quando o usuário faz login/logout mais de uma vez.
     const novoBtn = btnEntendi.cloneNode(true);
@@ -3164,6 +3166,7 @@ async function carregarNotificacoesUsuario(){
         }));
         await batch.commit();
         modal.style.display = 'none';
+        document.body.classList.remove('notificacaoModalOpen');
         conteudo.innerHTML = '';
       }catch(e){
         console.error("marcarNotificacoesLidas", e);
