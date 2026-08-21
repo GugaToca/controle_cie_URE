@@ -2903,10 +2903,14 @@ async function carregarEscolasParaRemanejamento(){
   }
   try{
     setMsg(adminRemanejamentoMsg, 'Carregando escolas...', '');
-    const snap = await getDocs(query(collection(db, "tecnicos_escolas"), where("tecnicoUid", "==", origem)));
+    // A distribuição oficial de escolas por técnico fica em escolas_tecnicos.
+    // tecnicos_escolas representa o controle de visitas/tarefas e pode existir
+    // apenas para algumas escolas. O painel administrativo deve trabalhar
+    // primeiro com a coleção de vínculos de distribuição.
+    const snap = await getDocs(query(collection(db, "escolas_tecnicos"), where("tecnicoUid", "==", origem)));
     const escolas = [];
     snap.forEach(d => escolas.push({ id:d.id, ...d.data() }));
-    escolas.sort((a,b) => (a.escolaNome || '').localeCompare(b.escolaNome || '', 'pt-BR'));
+    escolas.sort((a,b) => (a.escolaNome || a.cie || '').localeCompare((b.escolaNome || b.cie || ''), 'pt-BR'));
 
     if (!escolas.length){
       adminEscolasLista.innerHTML = '<div class="adminEmptyState">Este técnico não possui escolas atribuídas.</div>';
@@ -2975,10 +2979,14 @@ btnTransferirEscolas?.addEventListener('click', async () => {
       const id = input.value;
       const cie = input.dataset.cie || '';
       const nome = input.dataset.nome || cie || 'Escola';
-      const ref = doc(db, "tecnicos_escolas", id);
+
+      // O vínculo que está sendo transferido é o registro em escolas_tecnicos.
+      const ref = doc(db, "escolas_tecnicos", id);
       batch.set(ref, {
         tecnicoUid: destinoUid,
         tecnicoNome: destinoNome,
+        atualizadoEm: agora,
+        atualizadoPor: currentUid(),
         remanejadoEm: agora,
         remanejadoPor: currentUid(),
         remanejadoPorNome: getUserFirstName()
@@ -2986,16 +2994,18 @@ btnTransferirEscolas?.addEventListener('click', async () => {
       escolasTransferidas.push({ id, cie, nome });
     }
 
-    // Mantém a coleção de vínculos legada sincronizada, quando existir.
+    // Se houver também um registro de controle de visita para o mesmo CIE,
+    // sincroniza o responsável sem criar um registro novo.
     for (const escola of escolasTransferidas){
       if (!escola.cie) continue;
-      const vinculosSnap = await getDocs(query(collection(db, "escolas_tecnicos"), where("cie", "==", escola.cie)));
-      vinculosSnap.forEach(d => {
-        batch.set(doc(db, "escolas_tecnicos", d.id), {
+      const tarefasSnap = await getDocs(query(collection(db, "tecnicos_escolas"), where("cie", "==", escola.cie)));
+      tarefasSnap.forEach(d => {
+        batch.set(doc(db, "tecnicos_escolas", d.id), {
           tecnicoUid: destinoUid,
           tecnicoNome: destinoNome,
-          atualizadoEm: agora,
-          atualizadoPor: currentUid()
+          remanejadoEm: agora,
+          remanejadoPor: currentUid(),
+          remanejadoPorNome: getUserFirstName()
         }, { merge: true });
       });
     }
@@ -3071,9 +3081,10 @@ const btnAtualizarHistoricoRemanejamentos = $("btnAtualizarHistoricoRemanejament
 async function carregarHistoricoRemanejamentos(){
   if (!isAdministrador() || !adminHistoricoLista) return;
   try{
-    const snap = await getDocs(query(collection(db, "remanejamentos"), orderBy("dataCriacao", "desc")));
+    const snap = await getDocs(collection(db, "remanejamentos"));
     const registros = [];
     snap.forEach(d => registros.push({ id:d.id, ...d.data() }));
+    registros.sort((a,b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
 
     if (!registros.length){
       adminHistoricoLista.innerHTML = '<div class="adminEmptyState">Nenhum remanejamento realizado ainda.</div>';
