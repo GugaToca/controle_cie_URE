@@ -2392,3 +2392,82 @@ body.colResizeActive { cursor: col-resize; user-select: none; }
   .adminRemanejamentoActions { justify-content:stretch; }
   .adminRemanejamentoActions .btn { width:100%; }
 }
+
+/* ================= ADMINISTRAÇÃO ================= */
+.adminMainTab {
+  font-weight: 800;
+}
+
+.adminMainTab .tabIcon {
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.12));
+}
+
+.adminHistoricoCard {
+  margin-top: 18px;
+  padding: 22px;
+}
+
+.adminHistoricoHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.adminHistoricoHeader h2 {
+  margin: 4px 0 6px;
+}
+
+.adminHistoricoHeader p {
+  margin: 0;
+  opacity: .75;
+}
+
+.adminHistoricoLista {
+  display: grid;
+  gap: 10px;
+}
+
+.adminHistoricoItem {
+  padding: 14px 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  background: var(--card, #fff);
+}
+
+.adminHistoricoItemTop {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.adminHistoricoItemTop > span {
+  opacity: .55;
+  font-weight: 800;
+}
+
+.adminHistoricoItemTop time {
+  margin-left: auto;
+  font-size: .78rem;
+  opacity: .55;
+}
+
+.adminHistoricoItemMeta {
+  margin-top: 6px;
+  font-size: .88rem;
+  opacity: .7;
+}
+
+@media (max-width: 700px) {
+  .adminHistoricoHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .adminHistoricoItemTop time {
+    width: 100%;
+    margin-left: 0;
+  }
+}

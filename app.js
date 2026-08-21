@@ -87,6 +87,8 @@ const bulkMsg = $("bulkMsg");
 const toggleDark = $("toggleDark");
 
 const userDisplay = $("userDisplay");
+const adminMainTab = $("adminMainTab");
+const pageAdministracao = $("page-administracao");
 
 /* página cadastrar escolas */
 const formPage = $("schoolFormPage");
@@ -365,6 +367,7 @@ onAuthStateChanged(auth, async (user)=>{
 
     await registrarUsuario(user);
     await carregarPerfilUsuario(user);
+    atualizarNavegacaoAdministrador();
     
     // Carregar lista de técnicos antes de carregar escolas
     await carregarListaTecnicosCache();
@@ -868,6 +871,9 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
     const pageTecnicosEl = document.getElementById("page-tecnicos");
     if(pageTecnicosEl) pageTecnicosEl.style.display = page === "tecnicos" ? "block" : "none";
 
+    const pageAdministracaoEl = document.getElementById("page-administracao");
+    if(pageAdministracaoEl) pageAdministracaoEl.style.display = page === "administracao" && isAdministrador() ? "block" : "none";
+
     const pageInventarioEl = document.getElementById("page-inventario");
     if(pageInventarioEl) pageInventarioEl.style.display = page === "inventario" ? "block" : "none";
     if(page === "inventario") loadInventarioCards();
@@ -895,6 +901,11 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
 
     if(page === "tecnicos"){
       loadTecnicosPage();
+    }
+
+    if(page === "administracao" && isAdministrador()){
+      carregarAdminTecnicos();
+      carregarHistoricoRemanejamentos();
     }
 
   });
@@ -1169,20 +1180,34 @@ async function carregarPerfilUsuario(user){
     const snap = await getDoc(doc(db, "usuarios", user.uid));
     usuarioAtualDoc = snap.exists() ? snap.data() : null;
     perfilUsuarioAtual = usuarioAtualDoc?.perfil || "tecnico";
-    document.body.classList.toggle("usuarioAdministrador", perfilUsuarioAtual === "administrador");
-    const adminPanel = $("adminRemanejamentoPanel");
-    if (adminPanel) adminPanel.style.display = perfilUsuarioAtual === "administrador" ? "block" : "none";
-    if (perfilUsuarioAtual === "administrador") {
+    document.body.classList.toggle("usuarioAdministrador", isAdministrador());
+    atualizarNavegacaoAdministrador();
+    if (isAdministrador()) {
       await carregarAdminTecnicos();
+      await carregarHistoricoRemanejamentos();
     }
   }catch(e){
     console.error("carregarPerfilUsuario", e);
+    // Não assumimos privilégios quando o Firestore está indisponível.
     perfilUsuarioAtual = "tecnico";
+    usuarioAtualDoc = null;
+    document.body.classList.remove("usuarioAdministrador");
+    atualizarNavegacaoAdministrador();
   }
 }
 
 function isAdministrador(){
   return perfilUsuarioAtual === "administrador";
+}
+
+function atualizarNavegacaoAdministrador(){
+  if (!adminMainTab) return;
+  const mostrar = isAdministrador();
+  adminMainTab.style.display = mostrar ? "inline-flex" : "none";
+  adminMainTab.setAttribute("aria-hidden", mostrar ? "false" : "true");
+  if (!mostrar && pageAdministracao) {
+    pageAdministracao.style.display = "none";
+  }
 }
 
 async function loadUsuarios(){
@@ -1844,7 +1869,10 @@ async function carregarListaTecnicosCache() {
   try {
     const snap = await getDocs(collection(db, "usuarios"));
     listaTecnicosCache = [];
-    snap.forEach(d => listaTecnicosCache.push(d.data()));
+    snap.forEach(d => {
+      const usuario = d.data();
+      if (usuario.perfil !== "administrador") listaTecnicosCache.push(usuario);
+    });
     listaTecnicosCache.sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email));
     
     // Gerar abreviações únicas
@@ -2135,7 +2163,10 @@ async function carregarListaTecnicos() {
   try {
     const snap = await getDocs(collection(db, "usuarios"));
     tecnicosLista = [];
-    snap.forEach(d => tecnicosLista.push(d.data()));
+    snap.forEach(d => {
+      const usuario = d.data();
+      if (usuario.perfil !== "administrador") tecnicosLista.push(usuario);
+    });
     
     // Ordenar por nome
     tecnicosLista.sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email));
@@ -2851,7 +2882,7 @@ async function carregarAdminTecnicos(){
     tecnicos.sort((a,b) => nomeTecnicoAdmin(a).localeCompare(nomeTecnicoAdmin(b), "pt-BR"));
 
     const options = '<option value="">— Selecione —</option>' + tecnicos.map(t =>
-      `<option value="${escapeHtml(t.uid)}">${escapeHtml(nomeTecnicoAdmin(t))}</option>`
+      `<option value="${escapeHtml(t.uid)}" data-nome="${escapeHtml(nomeTecnicoAdmin(t))}">${escapeHtml(nomeTecnicoAdmin(t))}</option>`
     ).join("");
     adminTecnicoOrigem.innerHTML = options;
     adminTecnicoDestino.innerHTML = options;
@@ -2923,8 +2954,12 @@ btnTransferirEscolas?.addEventListener('click', async () => {
 
   const origem = tecnicosLista.find(t => t.uid === origemUid) || {};
   const destino = tecnicosLista.find(t => t.uid === destinoUid) || {};
-  const origemNome = nomeTecnicoAdmin(origem);
-  const destinoNome = nomeTecnicoAdmin(destino);
+  const origemNome = nomeTecnicoAdmin(origem) !== "Técnico"
+    ? nomeTecnicoAdmin(origem)
+    : (adminTecnicoOrigem?.selectedOptions?.[0]?.dataset?.nome || "Técnico");
+  const destinoNome = nomeTecnicoAdmin(destino) !== "Técnico"
+    ? nomeTecnicoAdmin(destino)
+    : (adminTecnicoDestino?.selectedOptions?.[0]?.dataset?.nome || "Técnico");
 
   if (!confirm(`Transferir ${selecionadas.length} escola(s) de ${origemNome} para ${destinoNome}?`)) return;
 
@@ -3021,6 +3056,7 @@ btnTransferirEscolas?.addEventListener('click', async () => {
     await carregarEscolasParaRemanejamento();
     await carregarListaTecnicosCache();
     await carregarListaTecnicos();
+    await carregarHistoricoRemanejamentos();
   }catch(e){
     console.error("transferirEscolas", e);
     setMsg(adminRemanejamentoMsg, `Erro ao remanejar escolas: ${e.message || 'verifique as permissões do Firebase.'}`, 'err');
@@ -3028,6 +3064,43 @@ btnTransferirEscolas?.addEventListener('click', async () => {
     btnTransferirEscolas.disabled = false;
   }
 });
+
+const adminHistoricoLista = $("adminHistoricoLista");
+const btnAtualizarHistoricoRemanejamentos = $("btnAtualizarHistoricoRemanejamentos");
+
+async function carregarHistoricoRemanejamentos(){
+  if (!isAdministrador() || !adminHistoricoLista) return;
+  try{
+    const snap = await getDocs(query(collection(db, "remanejamentos"), orderBy("dataCriacao", "desc")));
+    const registros = [];
+    snap.forEach(d => registros.push({ id:d.id, ...d.data() }));
+
+    if (!registros.length){
+      adminHistoricoLista.innerHTML = '<div class="adminEmptyState">Nenhum remanejamento realizado ainda.</div>';
+      return;
+    }
+
+    adminHistoricoLista.innerHTML = registros.slice(0, 20).map(r => {
+      const nomes = Array.isArray(r.escolas) ? r.escolas.map(e => e.nome || e.cie).filter(Boolean) : [];
+      return `
+        <article class="adminHistoricoItem">
+          <div class="adminHistoricoItemTop">
+            <strong>${escapeHtml(r.tecnicoAnteriorNome || "Técnico")}</strong>
+            <span>→</span>
+            <strong>${escapeHtml(r.tecnicoNovoNome || "Técnico")}</strong>
+            <time>${r.dataCriacao ? new Date(r.dataCriacao).toLocaleString("pt-BR") : ""}</time>
+          </div>
+          <div class="adminHistoricoItemMeta">${escapeHtml(String(r.quantidade || nomes.length || 0))} escola(s) • realizado por ${escapeHtml(r.realizadoPorNome || "Administrador")}</div>
+          ${nomes.length ? `<div class="notificacaoEscolas">${nomes.map(nome => `<span>${escapeHtml(nome)}</span>`).join("")}</div>` : ""}
+        </article>`;
+    }).join("");
+  }catch(e){
+    console.error("carregarHistoricoRemanejamentos", e);
+    adminHistoricoLista.innerHTML = '<div class="adminEmptyState">Não foi possível carregar o histórico.</div>';
+  }
+}
+
+btnAtualizarHistoricoRemanejamentos?.addEventListener("click", carregarHistoricoRemanejamentos);
 
 async function carregarNotificacoesUsuario(){
   const container = $("notificacoesUsuario");

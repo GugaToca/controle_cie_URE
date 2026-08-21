@@ -58,9 +58,13 @@ service cloud.firestore {
                         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
       // Edição/exclusão normal continua limitada ao responsável;
       // remanejamentos são permitidos somente ao Administrador.
-      allow update, delete: if request.auth != null &&
-                              (request.auth.uid == resource.data.tecnicoUid ||
-                               get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
+      allow update: if request.auth != null &&
+                       (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador" ||
+                        (request.auth.uid == resource.data.tecnicoUid &&
+                         request.resource.data.tecnicoUid == resource.data.tecnicoUid));
+      allow delete: if request.auth != null &&
+                       (request.auth.uid == resource.data.tecnicoUid ||
+                        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
     }
 
     // Escolas atribuídas aos técnicos
@@ -71,9 +75,13 @@ service cloud.firestore {
       allow create: if request.auth != null &&
                        (request.resource.data.tecnicoUid == request.auth.uid ||
                         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
-      allow update, delete: if request.auth != null &&
-                              (request.auth.uid == resource.data.tecnicoUid ||
-                               get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
+      allow update: if request.auth != null &&
+                       (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador" ||
+                        (request.auth.uid == resource.data.tecnicoUid &&
+                         request.resource.data.tecnicoUid == resource.data.tecnicoUid));
+      allow delete: if request.auth != null &&
+                       (request.auth.uid == resource.data.tecnicoUid ||
+                        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");
     }
 
     // Notificações de remanejamento

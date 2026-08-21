@@ -99,6 +99,11 @@
 <span>Técnicos</span>
 </button>
 
+<button id="adminMainTab" class="mainTab adminMainTab" data-page="administracao" role="tab" aria-selected="false" aria-controls="page-administracao" style="display:none">
+<span class="tabIcon">👑</span>
+<span>Administração</span>
+</button>
+
 <button class="mainTab" data-page="inventario" role="tab" aria-selected="false" aria-controls="page-inventario">
 <span class="tabIcon">📦</span>
 <span>Inventário</span>
@@ -342,12 +347,10 @@ Importar em massa
 
 </div>
 
-<!-- PÁGINA TÉCNICOS - GUIAS POR TÉCNICO -->
+<!-- PÁGINA ADMINISTRAÇÃO -->
 
-<div id="page-tecnicos" style="display:none" role="tabpanel" aria-labelledby="tecnicos-tab">
-
-  <!-- PAINEL EXCLUSIVO DO ADMINISTRADOR -->
-  <div id="adminRemanejamentoPanel" class="wrap adminRemanejamentoPanel" style="display:none">
+<div id="page-administracao" style="display:none" role="tabpanel" aria-labelledby="adminMainTab">
+  <div id="adminRemanejamentoPanel" class="wrap adminRemanejamentoPanel">
     <section class="card cardElevated adminRemanejamentoCard">
       <div class="adminRemanejamentoHeader">
         <div>
@@ -391,7 +394,26 @@ Importar em massa
         <button id="btnTransferirEscolas" class="btn primary btnLarge">↔️ Transferir escolas selecionadas</button>
       </div>
     </section>
+
+    <section class="card cardElevated adminHistoricoCard">
+      <div class="adminHistoricoHeader">
+        <div>
+          <span class="adminEyebrow">📋 CONTROLE</span>
+          <h2>Histórico de remanejamentos</h2>
+          <p>Consulte as últimas transferências realizadas pelo Administrador.</p>
+        </div>
+        <button id="btnAtualizarHistoricoRemanejamentos" class="btn btnSecondary btnSmall">🔄 Atualizar</button>
+      </div>
+      <div id="adminHistoricoLista" class="adminHistoricoLista">
+        <div class="adminEmptyState">Nenhum remanejamento carregado.</div>
+      </div>
+    </section>
   </div>
+</div>
+
+<!-- PÁGINA TÉCNICOS - GUIAS POR TÉCNICO -->
+
+<div id="page-tecnicos" style="display:none" role="tabpanel" aria-labelledby="tecnicos-tab">
 
   <div class="tecnicosPageContainer">
 
@@ -1594,7 +1616,7 @@ function memVictory(){
 })(); // IIFE fim
 </script>
 
-<script type="module" src="app.js?v=20260816-01"></script>
+<script type="module" src="app.js?v=20260821-admin01"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>
@@ -1626,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!document.querySelector('script[data-myboot-script="true"]')) {
             const script = document.createElement('script');
 
-            script.src = 'myboot/app.js?v=20260816-01';
+            script.src = 'myboot/app.js?v=20260821-admin01';
             script.dataset.mybootScript = 'true';
 
             script.onload = function () {
