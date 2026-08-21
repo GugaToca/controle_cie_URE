@@ -3266,11 +3266,11 @@ function renderAvisosAdmin(avisos){
       const id = btn.dataset.excluirAviso;
       if (!confirm("Encerrar este recado para toda a equipe?")) return;
       try{
-        await updateDoc(doc(db, "avisos_equipe", id), { ativo:false, encerradoEm:Date.now(), encerradoPor:currentUid() });
+        await deleteDoc(doc(db, "avisos_equipe", id));
         await carregarAvisosEquipe();
       }catch(e){
         console.error("encerrarAvisoEquipe", e);
-        setMsg(adminAvisoMsg, "Não foi possível encerrar o recado.", "err");
+        setMsg(adminAvisoMsg, "Não foi possível encerrar o recado. Verifique as Firestore Rules.", "err");
       }
     });
   });
