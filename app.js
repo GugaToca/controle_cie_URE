@@ -373,6 +373,7 @@ onAuthStateChanged(auth, async (user)=>{
     await carregarListaTecnicosCache();
     loadList();
     await carregarNotificacoesUsuario();
+    await carregarAvisosEquipe();
 
 
   }else{
@@ -3179,6 +3180,150 @@ async function carregarNotificacoesUsuario(){
     modal.style.display = 'none';
   }
 }
+
+/* ================= AVISOS DA EQUIPE ================= */
+const avisosEquipeEl = $("avisosEquipe");
+const adminAvisoMensagem = $("adminAvisoMensagem");
+const adminAvisoContador = $("adminAvisoContador");
+const btnPublicarAviso = $("btnPublicarAviso");
+const adminAvisoMsg = $("adminAvisoMsg");
+const adminAvisosAtivos = $("adminAvisosAtivos");
+const btnAtualizarAvisosAdmin = $("btnAtualizarAvisosAdmin");
+
+function formatarDataAviso(ms){
+  return ms ? new Date(ms).toLocaleString("pt-BR", { dateStyle:"short", timeStyle:"short" }) : "";
+}
+
+function renderAvisosEquipe(avisos){
+  if (!avisosEquipeEl) return;
+  if (!avisos.length){
+    avisosEquipeEl.style.display = "none";
+    avisosEquipeEl.innerHTML = "";
+    return;
+  }
+  avisosEquipeEl.style.display = "grid";
+  avisosEquipeEl.innerHTML = avisos.map(a => `
+    <article class="avisoEquipeCard" data-aviso-id="${escapeHtml(a.id)}">
+      <span class="avisoEquipeIcon" aria-hidden="true">⚠️</span>
+      <div class="avisoEquipeConteudo">
+        <div class="avisoEquipeTitulo">Aviso da Administração</div>
+        <div class="avisoEquipeMensagem">${escapeHtml(a.mensagem || "")}</div>
+        <div class="avisoEquipeMeta">${escapeHtml(a.autorNome || "Administrador")} • ${formatarDataAviso(a.dataCriacao)}</div>
+      </div>
+      <button class="avisoEquipeFechar" type="button" data-fechar-aviso="${escapeHtml(a.id)}" aria-label="Fechar aviso" title="Fechar aviso">×</button>
+    </article>
+  `).join("");
+
+  avisosEquipeEl.querySelectorAll("[data-fechar-aviso]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.fecharAviso;
+      try{
+        // O fechamento é apenas local para não esconder o recado de outros técnicos.
+        btn.closest(".avisoEquipeCard")?.remove();
+        if (!avisosEquipeEl.querySelector(".avisoEquipeCard")) avisosEquipeEl.style.display = "none";
+        localStorage.setItem(`aviso_equipe_feito_${currentUid()}_${id}`, "1");
+      }catch(e){ console.error("fecharAvisoEquipe", e); }
+    });
+  });
+}
+
+async function carregarAvisosEquipe(){
+  if (!avisosEquipeEl || !currentUid()) return;
+  try{
+    const snap = await getDocs(query(collection(db, "avisos_equipe")));
+    const avisos = [];
+    snap.forEach(d => {
+      const a = { id:d.id, ...d.data() };
+      if (a.ativo !== false && !localStorage.getItem(`aviso_equipe_feito_${currentUid()}_${d.id}`)) avisos.push(a);
+    });
+    avisos.sort((a,b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
+    renderAvisosEquipe(avisos);
+    if (isAdministrador()) await carregarAvisosAdmin();
+  }catch(e){
+    console.error("carregarAvisosEquipe", e);
+    if (avisosEquipeEl) avisosEquipeEl.style.display = "none";
+  }
+}
+
+function renderAvisosAdmin(avisos){
+  if (!adminAvisosAtivos) return;
+  if (!avisos.length){
+    adminAvisosAtivos.innerHTML = '<div class="adminEmptyState">Nenhum recado publicado.</div>';
+    return;
+  }
+  adminAvisosAtivos.innerHTML = avisos.map(a => `
+    <article class="adminAvisoAtivoItem">
+      <div>
+        <div class="adminAvisoAtivoMsg">${escapeHtml(a.mensagem || "")}</div>
+        <div class="adminAvisoAtivoMeta">${escapeHtml(a.autorNome || "Administrador")} • ${formatarDataAviso(a.dataCriacao)}</div>
+      </div>
+      <button class="btn btnSecondary btnSmall" type="button" data-excluir-aviso="${escapeHtml(a.id)}">🗑️ Encerrar</button>
+    </article>
+  `).join("");
+  adminAvisosAtivos.querySelectorAll("[data-excluir-aviso]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!isAdministrador()) return;
+      const id = btn.dataset.excluirAviso;
+      if (!confirm("Encerrar este recado para toda a equipe?")) return;
+      try{
+        await updateDoc(doc(db, "avisos_equipe", id), { ativo:false, encerradoEm:Date.now(), encerradoPor:currentUid() });
+        await carregarAvisosEquipe();
+      }catch(e){
+        console.error("encerrarAvisoEquipe", e);
+        setMsg(adminAvisoMsg, "Não foi possível encerrar o recado.", "err");
+      }
+    });
+  });
+}
+
+async function carregarAvisosAdmin(){
+  if (!isAdministrador() || !adminAvisosAtivos) return;
+  try{
+    const snap = await getDocs(query(collection(db, "avisos_equipe")));
+    const avisos = [];
+    snap.forEach(d => {
+      const a = { id:d.id, ...d.data() };
+      if (a.ativo !== false) avisos.push(a);
+    });
+    avisos.sort((a,b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
+    renderAvisosAdmin(avisos);
+  }catch(e){
+    console.error("carregarAvisosAdmin", e);
+    adminAvisosAtivos.innerHTML = '<div class="adminEmptyState">Não foi possível carregar os recados.</div>';
+  }
+}
+
+adminAvisoMensagem?.addEventListener("input", () => {
+  if (adminAvisoContador) adminAvisoContador.textContent = String(adminAvisoMensagem.value.length);
+});
+
+btnPublicarAviso?.addEventListener("click", async () => {
+  if (!isAdministrador()) return setMsg(adminAvisoMsg, "Apenas o Administrador pode publicar recados.", "err");
+  const mensagem = (adminAvisoMensagem?.value || "").trim();
+  if (!mensagem) return setMsg(adminAvisoMsg, "Digite um recado antes de publicar.", "err");
+  try{
+    btnPublicarAviso.disabled = true;
+    setMsg(adminAvisoMsg, "Publicando recado...", "");
+    await addDoc(collection(db, "avisos_equipe"), {
+      mensagem,
+      autorUid: currentUid(),
+      autorNome: getUserFirstName(),
+      dataCriacao: Date.now(),
+      ativo: true
+    });
+    adminAvisoMensagem.value = "";
+    if (adminAvisoContador) adminAvisoContador.textContent = "0";
+    setMsg(adminAvisoMsg, "Recado publicado para toda a equipe.", "ok");
+    await carregarAvisosEquipe();
+  }catch(e){
+    console.error("publicarAvisoEquipe", e);
+    setMsg(adminAvisoMsg, `Não foi possível publicar o recado: ${e.message || "erro no Firebase"}`, "err");
+  }finally{
+    btnPublicarAviso.disabled = false;
+  }
+});
+
+btnAtualizarAvisosAdmin?.addEventListener("click", carregarAvisosAdmin);
 
 /* ================= INVENTÁRIO ================= */
 

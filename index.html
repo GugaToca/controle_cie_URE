@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260821-admin04"/>
+<link rel="stylesheet" href="styles.css?v=20260821-admin05"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
@@ -122,6 +122,9 @@
 
 
 </nav>
+
+<!-- AVISOS DA EQUIPE -->
+<section id="avisosEquipe" class="avisosEquipe" aria-label="Avisos da equipe" style="display:none"></section>
 
 <style id="notificacoesModalCritical">
 /* Modal de atualização da carteira: estilos críticos inline para evitar cache do CSS. */
@@ -432,6 +435,32 @@ Importar em massa
       <div id="adminRemanejamentoMsg" class="msg" role="status" aria-live="polite"></div>
       <div class="adminRemanejamentoActions">
         <button id="btnTransferirEscolas" class="btn primary btnLarge">↔️ Transferir escolas selecionadas</button>
+      </div>
+    </section>
+
+    <section class="card cardElevated adminAvisoCard">
+      <div class="adminHistoricoHeader">
+        <div>
+          <span class="adminEyebrow">📣 COMUNICAÇÃO</span>
+          <h2>Recado para todos os técnicos</h2>
+          <p>Publique uma observação que aparecerá logo abaixo do menu para toda a equipe.</p>
+        </div>
+      </div>
+      <div class="adminAvisoComposer">
+        <label class="inputLabel" for="adminAvisoMensagem">Mensagem</label>
+        <textarea id="adminAvisoMensagem" class="adminAvisoTextarea" maxlength="500" rows="4" placeholder="Ex.: Amanhã teremos manutenção na rede da escola X a partir das 8h."></textarea>
+        <div class="adminAvisoComposerFooter">
+          <small><span id="adminAvisoContador">0</span>/500 caracteres</small>
+          <button id="btnPublicarAviso" class="btn primary btnLarge">⚠️ Publicar recado</button>
+        </div>
+      </div>
+      <div id="adminAvisoMsg" class="msg" role="status" aria-live="polite"></div>
+      <div class="adminAvisosAtivosHeader">
+        <strong>Recados publicados</strong>
+        <button id="btnAtualizarAvisosAdmin" class="btn btnSecondary btnSmall">🔄 Atualizar</button>
+      </div>
+      <div id="adminAvisosAtivos" class="adminAvisosAtivos">
+        <div class="adminEmptyState">Nenhum recado publicado.</div>
       </div>
     </section>
 
@@ -1656,7 +1685,7 @@ function memVictory(){
 })(); // IIFE fim
 </script>
 
-<script type="module" src="app.js?v=20260821-admin03"></script>
+<script type="module" src="app.js?v=20260821-admin05"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>

@@ -99,5 +99,14 @@ service cloud.firestore {
                            get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador";
     }
 
+    // Recados publicados pela Administração para toda a equipe
+    match /avisos_equipe/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+                       get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador";
+      allow update, delete: if request.auth != null &&
+                       get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador";
+    }
+
   }
 }
