@@ -3114,8 +3114,11 @@ async function carregarHistoricoRemanejamentos(){
 btnAtualizarHistoricoRemanejamentos?.addEventListener("click", carregarHistoricoRemanejamentos);
 
 async function carregarNotificacoesUsuario(){
-  const container = $("notificacoesUsuario");
-  if (!container || !currentUid()) return;
+  const modal = $("notificacoesUsuario");
+  const conteudo = $("notificacoesModalConteudo");
+  const btnEntendi = $("btnEntendiNotificacoes");
+  if (!modal || !conteudo || !btnEntendi || !currentUid()) return;
+
   try{
     const q = query(
       collection(db, "notificacoes"),
@@ -3126,44 +3129,51 @@ async function carregarNotificacoesUsuario(){
     snap.forEach(d => notificacoes.push({ id:d.id, ...d.data() }));
     notificacoes.sort((a,b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
 
-    if (!notificacoes.length){
-      container.innerHTML = '';
-      container.style.display = 'none';
+    // O aviso é exibido somente para notificações ainda não reconhecidas.
+    const naoLidas = notificacoes.filter(n => !n.visualizado);
+
+    if (!naoLidas.length){
+      modal.style.display = 'none';
+      conteudo.innerHTML = '';
       return;
     }
 
-    const naoLidas = notificacoes.filter(n => !n.visualizado);
-    container.style.display = 'block';
-    container.innerHTML = `
-      <div class="notificacaoCardHeader">
-        <div><span class="notificacaoIcon">🔔</span><strong>Atualizações da sua carteira</strong></div>
-        ${naoLidas.length ? `<span class="notificacaoBadge">${naoLidas.length} nova(s)</span>` : ''}
-      </div>
-      <div class="notificacaoLista">
-        ${notificacoes.slice(0, 5).map(n => `
-          <div class="notificacaoItem ${n.visualizado ? '' : 'nova'}">
-            <div class="notificacaoItemTitle">${escapeHtml(n.titulo || 'Atualização')}</div>
-            <div class="notificacaoItemMsg">${escapeHtml(n.mensagem || '')}</div>
-            ${Array.isArray(n.escolas) && n.escolas.length ? `<div class="notificacaoEscolas">${n.escolas.map(e => `<span>${escapeHtml(e.nome || e.cie || 'Escola')}</span>`).join('')}</div>` : ''}
-            <small>${n.dataCriacao ? new Date(n.dataCriacao).toLocaleString('pt-BR') : ''}</small>
-          </div>
-        `).join('')}
-      </div>
-      ${naoLidas.length ? `<button id="btnMarcarNotificacoesLidas" class="btn btnSecondary btnSmall">Marcar como lidas</button>` : ''}
-    `;
+    conteudo.innerHTML = naoLidas.map(n => `
+      <article class="notificacaoModalItem">
+        <div class="notificacaoModalItemTitle">${escapeHtml(n.titulo || 'Atualização')}</div>
+        <div class="notificacaoModalItemMsg">${escapeHtml(n.mensagem || '')}</div>
+        ${Array.isArray(n.escolas) && n.escolas.length ? `
+          <div class="notificacaoEscolas">${n.escolas.map(e => `<span>${escapeHtml(e.nome || e.cie || 'Escola')}</span>`).join('')}</div>
+        ` : ''}
+        <small>${n.dataCriacao ? new Date(n.dataCriacao).toLocaleString('pt-BR') : ''}</small>
+      </article>
+    `).join('');
 
-    $("btnMarcarNotificacoesLidas")?.addEventListener('click', async () => {
+    modal.style.display = 'flex';
+
+    // Evita acumular listeners quando o usuário faz login/logout mais de uma vez.
+    const novoBtn = btnEntendi.cloneNode(true);
+    btnEntendi.replaceWith(novoBtn);
+    novoBtn.addEventListener('click', async () => {
       try{
+        novoBtn.disabled = true;
         const batch = writeBatch(db);
-        naoLidas.forEach(n => batch.update(doc(db, "notificacoes", n.id), { visualizado:true, visualizadoEm:Date.now() }));
+        naoLidas.forEach(n => batch.update(doc(db, "notificacoes", n.id), {
+          visualizado: true,
+          visualizadoEm: Date.now()
+        }));
         await batch.commit();
-        await carregarNotificacoesUsuario();
+        modal.style.display = 'none';
+        conteudo.innerHTML = '';
       }catch(e){
         console.error("marcarNotificacoesLidas", e);
+        novoBtn.disabled = false;
       }
     });
+
   }catch(e){
     console.error("carregarNotificacoesUsuario", e);
+    modal.style.display = 'none';
   }
 }
 

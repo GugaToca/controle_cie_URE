@@ -127,7 +127,24 @@
 
 <div id="page-sistema" style="display:block" role="tabpanel" aria-labelledby="sistema-tab">
 
-<div id="notificacoesUsuario" class="wrap notificacoesUsuario" style="display:none"></div>
+<div id="notificacoesUsuario" class="notificacoesModal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="notificacoesModalTitulo">
+  <div class="notificacoesModalBackdrop" data-close-notificacoes></div>
+  <section class="notificacoesModalCard">
+    <div class="notificacoesModalHeader">
+      <div>
+        <span class="notificacaoIconLarge">🔔</span>
+        <div>
+          <span class="notificacaoModalEyebrow">ATUALIZAÇÃO</span>
+          <h2 id="notificacoesModalTitulo">Atualização da sua carteira</h2>
+        </div>
+      </div>
+    </div>
+    <div id="notificacoesModalConteudo" class="notificacoesModalConteudo"></div>
+    <div class="notificacoesModalActions">
+      <button id="btnEntendiNotificacoes" class="btn primary btnLarge">ENTENDI</button>
+    </div>
+  </section>
+</div>
 
 <div class="wrap">
 
@@ -1616,7 +1633,7 @@ function memVictory(){
 })(); // IIFE fim
 </script>
 
-<script type="module" src="app.js?v=20260821-admin02"></script>
+<script type="module" src="app.js?v=20260821-admin03"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>

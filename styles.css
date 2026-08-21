@@ -2373,24 +2373,58 @@ body.colResizeActive { cursor: col-resize; user-select: none; }
 .adminEscolaCheckInfo small { opacity:.65; }
 .adminEmptyState { padding:24px; text-align:center; opacity:.65; border:1px dashed var(--border,#d1d5db); border-radius:12px; grid-column:1/-1; }
 .adminRemanejamentoActions { display:flex; justify-content:flex-end; margin-top:16px; }
-.notificacoesUsuario { margin-top:14px; }
-.notificacaoCardHeader { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; }
-.notificacaoCardHeader > div { display:flex; align-items:center; gap:8px; }
-.notificacaoIcon { font-size:1.2rem; }
-.notificacaoBadge { background:#dbeafe; color:#1d4ed8; padding:4px 8px; border-radius:999px; font-size:.75rem; font-weight:700; }
-.notificacaoLista { display:grid; gap:8px; }
-.notificacaoItem { padding:13px 16px; border:1px solid var(--border,#e5e7eb); border-radius:12px; background:var(--card,#fff); }
-.notificacaoItem.nova { border-left:4px solid #2563eb; background:#eff6ff; }
-.notificacaoItemTitle { font-weight:800; margin-bottom:3px; }
-.notificacaoItemMsg { opacity:.78; }
-.notificacaoItem small { display:block; margin-top:7px; opacity:.55; }
-.notificacaoEscolas { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.notificacaoEscolas span { font-size:.78rem; padding:4px 7px; border-radius:7px; background:rgba(37,99,235,.1); }
-#btnMarcarNotificacoesLidas { margin-top:10px; }
+
+/* Aviso de remanejamento exibido somente ao entrar, até o usuário clicar em ENTENDI. */
+.notificacoesModal {
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.notificacoesModalBackdrop {
+  position:absolute;
+  inset:0;
+  background:rgba(15,23,42,.58);
+  backdrop-filter:blur(3px);
+}
+.notificacoesModalCard {
+  position:relative;
+  width:min(680px,100%);
+  max-height:min(82vh,760px);
+  overflow:auto;
+  background:var(--card,#fff);
+  color:var(--text,#0f172a);
+  border:1px solid rgba(37,99,235,.18);
+  border-radius:20px;
+  box-shadow:0 24px 70px rgba(15,23,42,.28);
+  padding:24px;
+  animation:notificacaoModalEntrada .18s ease-out;
+}
+.notificacoesModalHeader > div { display:flex; align-items:center; gap:13px; }
+.notificacaoIconLarge { font-size:2rem; line-height:1; }
+.notificacaoModalEyebrow { display:block; font-size:.72rem; font-weight:800; letter-spacing:.08em; color:#2563eb; margin-bottom:3px; }
+.notificacoesModalHeader h2 { margin:0; font-size:1.35rem; }
+.notificacoesModalConteudo { display:grid; gap:12px; margin-top:20px; }
+.notificacaoModalItem { padding:16px; border:1px solid var(--border,#e5e7eb); border-radius:14px; background:rgba(37,99,235,.045); }
+.notificacaoModalItemTitle { font-weight:800; margin-bottom:5px; }
+.notificacaoModalItemMsg { opacity:.82; line-height:1.45; }
+.notificacaoModalItem small { display:block; margin-top:9px; opacity:.55; }
+.notificacaoEscolas { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.notificacaoEscolas span { font-size:.78rem; padding:5px 8px; border-radius:7px; background:rgba(37,99,235,.1); }
+.notificacoesModalActions { display:flex; justify-content:flex-end; margin-top:20px; }
+.notificacoesModalActions .btn { min-width:140px; }
+@keyframes notificacaoModalEntrada { from { opacity:0; transform:translateY(8px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }
+
 @media (max-width: 700px) {
   .adminRemanejamentoGrid { grid-template-columns:1fr; }
   .adminRemanejamentoActions { justify-content:stretch; }
   .adminRemanejamentoActions .btn { width:100%; }
+  .notificacoesModal { padding:12px; }
+  .notificacoesModalCard { padding:18px; max-height:88vh; border-radius:16px; }
+  .notificacoesModalActions .btn { width:100%; }
 }
 
 /* ================= ADMINISTRAÇÃO ================= */
