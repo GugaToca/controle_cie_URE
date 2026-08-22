@@ -1052,7 +1052,7 @@ body.colResizeActive { cursor: col-resize; user-select: none; }
   font-style: italic;
 }
 
-/* ================= CARDS GRID (inventário) ================= */
+/* ================= CARDS GRID ================= */
 
 .cardsGrid {
   display: grid;

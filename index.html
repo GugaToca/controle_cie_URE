@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260821-admin05"/>
+<link rel="stylesheet" href="styles.css?v=20260822-admin06"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
@@ -104,10 +104,7 @@
 <span>Administração</span>
 </button>
 
-<button class="mainTab" data-page="inventario" role="tab" aria-selected="false" aria-controls="page-inventario">
-<span class="tabIcon">📦</span>
-<span>Inventário</span>
-</button>
+
 
 <button class="mainTab" data-page="termo-visitas" role="tab" aria-selected="false" aria-label="Termo de visitas">
 <span class="tabIcon">📝</span>
@@ -1021,158 +1018,6 @@ Importar em massa
 
 </div>
 
-<!-- PÁGINA INVENTÁRIO -->
-
-<div id="page-inventario" style="display:none" role="tabpanel" aria-labelledby="inventario-tab">
-  <div class="wrap">
-    <h2 class="pageTitle"><span class="titleIcon">📦</span> Inventário de Equipamentos</h2>
-
-    <div class="card cardElevated searchCard">
-      <h3 class="sectionSubtitle"><span class="titleIcon">🔍</span> Buscar escola</h3>
-      <div class="searchBox">
-        <input type="search" id="searchInventario" placeholder="Digite nome, município ou CIE" aria-label="Buscar escola para inventário">
-      </div>
-    </div>
-
-    <div id="cardsInventario" class="cardsGrid" role="list"></div>
-  </div>
-</div>
-
-<!-- MODAL INVENTÁRIO DA ESCOLA -->
-
-<div id="modalInventario" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalInventarioSchool">
-  <div class="modalContent modalLarge">
-    <div class="modalHeader">
-      <h3 id="modalInventarioSchool" class="modalTitle"></h3>
-      <button id="btnFecharModalInventario" class="btnCloseModal" aria-label="Fechar">✕</button>
-    </div>
-
-    <div class="actions" style="margin-bottom:16px;margin-top:0">
-      <button id="btnNovoEquipamento" class="btn primary">➕ Novo Equipamento</button>
-    </div>
-
-    <div id="inventarioLista">
-      <div class="tableWrap">
-        <table class="modernTable" id="tabelaInventario">
-          <thead>
-            <tr>
-              <th scope="col">Tipo</th>
-              <th scope="col">Marca</th>
-              <th scope="col">Nº Série</th>
-              <th scope="col">Patrimônio</th>
-              <th scope="col">Status</th>
-              <th scope="col">Últ. Manutenção</th>
-              <th scope="col">Garantia</th>
-              <th scope="col">Observação</th>
-              <th scope="col">Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyInventario"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL CADASTRAR / EDITAR EQUIPAMENTO -->
-
-<div id="modalEquipamento" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEquipamentoTitle">
-  <div class="modalContent modalLarge">
-    <div class="modalHeader">
-      <h3 id="modalEquipamentoTitle" class="modalTitle">Novo Equipamento</h3>
-      <button id="btnFecharModalEquipamento" class="btnCloseModal" aria-label="Fechar">✕</button>
-    </div>
-
-    <form id="formEquipamento" class="form" novalidate>
-      <div class="formGrid">
-
-        <div class="formGroup">
-          <label class="inputLabel">
-            <span class="labelText">Tipo de Equipamento *</span>
-            <select id="equipTipo" required aria-required="true">
-              <option value="">— Selecione —</option>
-              <option>Computador</option>
-              <option>Notebook</option>
-              <option>Impressora</option>
-              <option>Projetor</option>
-              <option>TV</option>
-              <option>Ar-condicionado</option>
-              <option>Switch</option>
-              <option>Roteador</option>
-              <option>Estabilizador</option>
-              <option>Scanner</option>
-              <option>Outro</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="formGroup">
-          <label class="inputLabel">
-            <span class="labelText">Marca</span>
-            <input id="equipMarca" type="text" placeholder="Ex: Dell, HP, Samsung">
-          </label>
-        </div>
-
-        <div class="formGroup">
-          <label class="inputLabel">
-            <span class="labelText">Número de Série</span>
-            <input id="equipSerie" type="text" placeholder="Número de série">
-          </label>
-        </div>
-
-        <div class="formGroup">
-          <label class="inputLabel">
-            <span class="labelText">Nº Patrimônio</span>
-            <input id="equipPatrimonio" type="text" placeholder="Número de patrimônio">
-          </label>
-        </div>
-
-        <div class="formGroup">
-          <label class="inputLabel">
-            <span class="labelText">Status *</span>
-            <select id="equipStatus" required aria-required="true">
-              <option value="">— Selecione —</option>
-              <option>Bom</option>
-              <option>Regular</option>
-              <option>Ruim</option>
-              <option>Inativo</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="formGroup">
-          <label class="inputLabel">
-            <span class="labelText">Data Última Manutenção</span>
-            <input id="equipManutencao" type="date">
-          </label>
-        </div>
-
-        <div class="formGroup">
-          <label class="inputLabel">
-            <span class="labelText">Data Solicitação Garantia</span>
-            <input id="equipGarantia" type="date">
-          </label>
-        </div>
-
-      </div>
-
-      <div class="formGroup">
-        <label class="inputLabel">
-          <span class="labelText">Observação</span>
-          <textarea id="equipObs" rows="2" placeholder="Observações adicionais..."></textarea>
-        </label>
-      </div>
-
-      <div id="equipFormMsg" class="msg" role="status" aria-live="polite"></div>
-
-      <div class="actions">
-        <button type="submit" class="btn primary btnLarge">💾 Salvar</button>
-        <button type="button" id="btnCancelarEquipamento" class="btn btnSecondary">Cancelar</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- PÁGINA CADASTRAR ESCOLAS -->
 
 <div id="page-cadastrar-escolas" style="display:none" role="tabpanel" aria-labelledby="cadastrar-escolas-tab">
@@ -1685,7 +1530,7 @@ function memVictory(){
 })(); // IIFE fim
 </script>
 
-<script type="module" src="app.js?v=20260821-admin05"></script>
+<script type="module" src="app.js?v=20260822-admin06"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>
