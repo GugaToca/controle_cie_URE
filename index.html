@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260822-admin06"/>
+<link rel="stylesheet" href="styles.css?v=20260902-consolidado03"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
@@ -97,6 +97,11 @@
 <button class="mainTab" data-page="tecnicos" role="tab" aria-selected="false" aria-controls="page-tecnicos">
 <span class="tabIcon">👨‍🔧</span>
 <span>Técnicos</span>
+</button>
+
+<button class="mainTab" data-page="consolidado" role="tab" aria-selected="false" aria-controls="page-consolidado">
+<span class="tabIcon">📊</span>
+<span>Consolidado</span>
 </button>
 
 <button id="adminMainTab" class="mainTab adminMainTab" data-page="administracao" role="tab" aria-selected="false" aria-controls="page-administracao" style="display:none">
@@ -385,6 +390,98 @@ Importar em massa
 
   </div>
 
+</div>
+
+<!-- PÁGINA CONSOLIDADO -->
+<div id="page-consolidado" style="display:none" role="tabpanel" aria-labelledby="consolidado-tab">
+  <div class="wrap">
+    <section class="card cardElevated consolidadoImportCard">
+      <div class="listHeader">
+        <div class="listHeaderLeft">
+          <h2 class="pageTitle"><span class="titleIcon">📊</span> Consolidado</h2>
+          <p class="sistemaSubtitle">Envie a planilha de inventário e transforme os dados automaticamente em um consolidado pronto para impressão ou PDF.</p>
+        </div>
+      </div>
+
+      <div class="consolidadoUploadArea">
+        <label class="consolidadoDropzone" for="consolidadoFileInput" id="consolidadoDropzone">
+          <span class="consolidadoUploadIcon">📥</span>
+          <strong id="consolidadoFileLabel">Clique para selecionar a planilha</strong>
+          <span>ou arraste o arquivo para esta área</span>
+          <small>Excel / CSV • processamento feito no navegador</small>
+          <input id="consolidadoFileInput" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+        </label>
+
+        <div class="consolidadoImportMeta">
+          <div class="formGroup">
+            <label for="consolidadoTitulo">Título do relatório</label>
+            <input id="consolidadoTitulo" type="text" value="CONSOLIDADO DO INVENTÁRIO POR GRUPOS" maxlength="120">
+          </div>
+          <div class="formGroup">
+            <label for="consolidadoSubtitulo">Identificação / subtítulo</label>
+            <input id="consolidadoSubtitulo" type="text" placeholder="Ex.: 35828 - AURELIANO MENDONCA PROFESSOR - INVENTÁRIO" maxlength="160">
+          </div>
+        </div>
+      </div>
+
+      <div class="consolidadoImportActions">
+        <button id="btnProcessarConsolidado" class="btn primary" type="button" disabled>⚙️ Processar planilha</button>
+        <button id="btnBaixarConsolidadoPdf" class="btn btnSecondary" type="button" disabled>⬇️ Baixar PDF</button>
+      </div>
+
+      <div id="consolidadoImportInfo" class="consolidadoImportInfo" hidden></div>
+      <div id="consolidadoImportMsg" class="msg" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="consolidadoPreview" class="consolidadoReportPreview" hidden>
+      <header class="consolidadoReportHeader">
+        <h1 id="consolidadoPreviewTitulo">CONSOLIDADO DO INVENTÁRIO POR GRUPOS</h1>
+        <div id="consolidadoPreviewSubtitulo">INVENTÁRIO</div>
+      </header>
+
+      <div class="consolidadoReportBody">
+        <h2>LEVANTAMENTO GERAL</h2>
+        <p class="consolidadoReportIntro">Equipamentos agrupados por tipo, fabricante e modelo. Nenhum equipamento é listado individualmente.</p>
+
+        <div id="consolidadoStats" class="consolidadoStats"></div>
+
+        <div class="consolidadoReportTableWrap">
+          <table class="consolidadoReportTable" id="tabelaConsolidadoRelatorio">
+            <thead>
+              <tr>
+                <th>GRUPO</th>
+                <th>FABRICANTE</th>
+                <th>MODELO / LINHA</th>
+                <th>TOTAL</th>
+                <th>DISP.</th>
+                <th>DANIF.</th>
+                <th>MANUT. / INSERV.</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyConsolidadoEscolas"></tbody>
+          </table>
+        </div>
+
+        <div class="consolidadoBottomGrid">
+          <section class="consolidadoSummaryBox">
+            <h3>TOTAL POR TIPO</h3>
+            <ul id="consolidadoPorTipo"></ul>
+          </section>
+          <section class="consolidadoSummaryBox">
+            <h3>AMBIENTE</h3>
+            <ul id="consolidadoAmbiente"></ul>
+          </section>
+        </div>
+
+        <footer class="consolidadoReportFooter">
+          <span id="consolidadoFonte">Fonte: dados da planilha.</span>
+          <span id="consolidadoGeradoEm"></span>
+        </footer>
+      </div>
+    </section>
+
+    <div id="consolidadoMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
 </div>
 
 <!-- PÁGINA ADMINISTRAÇÃO -->
@@ -1530,7 +1627,10 @@ function memVictory(){
 })(); // IIFE fim
 </script>
 
-<script type="module" src="app.js?v=20260822-admin06"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
+<script type="module" src="app.js?v=20260902-consolidado03"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>
