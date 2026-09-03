@@ -3349,20 +3349,21 @@ btnPublicarAviso?.addEventListener("click", async () => {
 
 btnAtualizarAvisosAdmin?.addEventListener("click", carregarAvisosAdmin);
 
-/* ================= CONSOLIDADO: EXCEL -> RELATÓRIO/PDF ================= */
+/* ================= CONSOLIDADO: MÚLTIPLAS PLANILHAS -> RELATÓRIO/PDF ================= */
 
-let consolidadoPlanilhaArquivo = null;
+let consolidadoPlanilhaArquivos = [];
 let consolidadoRelatorio = null;
 
 const CONSOLIDADO_ALIASES = {
-  grupo: ["grupo", "tipo", "categoria", "equipamento", "tipo de equipamento", "grupo de equipamento"],
+  grupo: ["grupo", "tipo", "categoria", "categoria do equipamento", "equipamento", "tipo de equipamento", "grupo de equipamento"],
   fabricante: ["fabricante", "marca", "manufacturer"],
   modelo: ["modelo", "modelo / linha", "modelo/linha", "linha", "model"],
-  quantidade: ["quantidade", "qtd", "qtde", "total", "quantidade total", "n", "qtd total"],
-  disponiveis: ["disponiveis", "disponível", "disponiveis", "disponivel", "disp", "disp."],
+  quantidade: ["quantidade", "qtd", "qtde", "quantidade total", "qtd total", "total de equipamentos", "total"],
+  disponiveis: ["disponiveis", "disponível", "disponivel", "disp", "disp."],
   danificados: ["danificados", "danificado", "danif", "danif."],
   manutencao: ["manutencao", "manutenção", "em manutencao", "em manutenção", "manut.", "manut"],
   inservivel: ["inservivel", "inservível", "inserviveis", "inservíveis", "inserv"],
+  status: ["status do equipamento", "status equipamento", "status", "situação do equipamento", "situacao do equipamento", "situação", "situacao"],
   ambiente: ["ambiente", "rede", "tipo de ambiente"],
   cie: ["cie", "código cie", "codigo cie"],
   escola: ["escola", "unidade escolar", "nome da escola"],
@@ -3380,7 +3381,11 @@ function numeroConsolidado(v){
   if (typeof v === "number" && Number.isFinite(v)) return v;
   const s = String(v ?? "").trim();
   if (!s) return 0;
-  const limpo = s.replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, "");
+  // Aceita 1.234,56 e 1234.56, sem transformar números negativos em positivos.
+  let limpo = s.replace(/\s/g, "");
+  if (limpo.includes(",") && limpo.includes(".")) limpo = limpo.replace(/\./g, "").replace(",", ".");
+  else if (limpo.includes(",")) limpo = limpo.replace(",", ".");
+  limpo = limpo.replace(/[^0-9.-]/g, "");
   const n = Number(limpo);
   return Number.isFinite(n) ? n : 0;
 }
@@ -3390,21 +3395,33 @@ function acharColunaConsolidado(headers, aliases){
   const a = aliases.map(normalizarCabecalhoConsolidado);
   let i = norm.findIndex(h => a.includes(h));
   if(i >= 0) return headers[i];
-  i = norm.findIndex(h => a.some(x => x && (h.includes(x) || x.includes(h))));
+  // Somente usa correspondência parcial para aliases suficientemente específicos.
+  const especificos = a.filter(x => x.length >= 8);
+  i = norm.findIndex(h => especificos.some(x => h.includes(x) || x.includes(h)));
   return i >= 0 ? headers[i] : null;
 }
 
-function valorColunaConsolidado(row, col){
-  return col ? row[col] : "";
-}
-
+function valorColunaConsolidado(row, col){ return col ? row[col] : ""; }
 function textoConsolidado(v, fallback="Não informado"){
   const s = String(v ?? "").trim();
   return s || fallback;
 }
-
 function chaveGrupoConsolidado(grupo, fabricante, modelo){
   return [grupo, fabricante, modelo].map(v => normalizarCabecalhoConsolidado(v)).join("|");
+}
+
+function interpretarStatusConsolidado(v){
+  const s = normalizarCabecalhoConsolidado(v);
+  if(!s) return null;
+  if(s.includes("dispon")) return "disponiveis";
+  if(s.includes("danif")) return "danificados";
+  if(s.includes("manut")) return "manutencao";
+  if(s.includes("inserv")) return "inservivel";
+  return null;
+}
+
+function formatarTamanhoConsolidado(bytes){
+  return bytes >= 1024*1024 ? `${(bytes/1024/1024).toFixed(1)} MB` : `${(bytes/1024).toFixed(1)} KB`;
 }
 
 function iniciarUploadConsolidado(){
@@ -3414,8 +3431,8 @@ function iniciarUploadConsolidado(){
   if(!input || !drop || !btn) return;
 
   input.addEventListener("change", () => {
-    consolidadoPlanilhaArquivo = input.files?.[0] || null;
-    atualizarArquivoConsolidado();
+    consolidadoPlanilhaArquivos = [...(input.files || [])];
+    atualizarArquivosConsolidado();
   });
 
   ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => {
@@ -3425,351 +3442,270 @@ function iniciarUploadConsolidado(){
     e.preventDefault(); e.stopPropagation(); drop.classList.remove("isDragOver");
   }));
   drop.addEventListener("drop", e => {
-    const f = e.dataTransfer?.files?.[0];
-    if(!f) return;
-    consolidadoPlanilhaArquivo = f;
+    const files = [...(e.dataTransfer?.files || [])];
+    if(!files.length) return;
+    consolidadoPlanilhaArquivos = files;
     try { input.files = e.dataTransfer.files; } catch(_) {}
-    atualizarArquivoConsolidado();
+    atualizarArquivosConsolidado();
   });
 
-  btn.addEventListener("click", processarPlanilhaConsolidado);
+  btn.addEventListener("click", processarPlanilhasConsolidado);
   $("btnBaixarConsolidadoPdf")?.addEventListener("click", baixarConsolidadoPdf);
 }
 
-function atualizarArquivoConsolidado(){
+function atualizarArquivosConsolidado(){
   const btn = $("btnProcessarConsolidado");
   const label = $("consolidadoFileLabel");
   const info = $("consolidadoImportInfo");
+  const lista = $("consolidadoArquivosLista");
   const msg = $("consolidadoImportMsg");
   if(!btn) return;
-  btn.disabled = !consolidadoPlanilhaArquivo;
-  if(label) label.textContent = consolidadoPlanilhaArquivo ? consolidadoPlanilhaArquivo.name : "Clique para selecionar a planilha";
-  if(info && consolidadoPlanilhaArquivo){
-    info.hidden = false;
-    info.innerHTML = `<strong>Arquivo selecionado:</strong> ${escapeHtml(consolidadoPlanilhaArquivo.name)} · ${(consolidadoPlanilhaArquivo.size/1024).toFixed(1)} KB`;
+  btn.disabled = consolidadoPlanilhaArquivos.length === 0;
+  if(label){
+    label.textContent = consolidadoPlanilhaArquivos.length === 1
+      ? consolidadoPlanilhaArquivos[0].name
+      : consolidadoPlanilhaArquivos.length ? `${consolidadoPlanilhaArquivos.length} planilhas selecionadas` : "Clique para selecionar as planilhas";
   }
-  setMsg(msg, consolidadoPlanilhaArquivo ? "Arquivo pronto para processamento." : "", consolidadoPlanilhaArquivo ? "ok" : "");
+  if(info){
+    info.hidden = consolidadoPlanilhaArquivos.length === 0;
+    if(consolidadoPlanilhaArquivos.length){
+      const totalBytes = consolidadoPlanilhaArquivos.reduce((s,f)=>s+f.size,0);
+      info.innerHTML = `<strong>${consolidadoPlanilhaArquivos.length} arquivo(s) selecionado(s).</strong> ${formatarTamanhoConsolidado(totalBytes)} no total. Cada arquivo será validado individualmente antes da consolidação.`;
+    }
+  }
+  if(lista){
+    lista.hidden = consolidadoPlanilhaArquivos.length === 0;
+    lista.innerHTML = consolidadoPlanilhaArquivos.map((f,i)=>
+      `<div class="consolidadoArquivoItem"><span class="arquivoNome">${i+1}. ${escapeHtml(f.name)}</span><span class="arquivoMeta">${formatarTamanhoConsolidado(f.size)}</span></div>`
+    ).join("");
+  }
+  setMsg(msg, consolidadoPlanilhaArquivos.length ? "Arquivos prontos para processamento." : "", consolidadoPlanilhaArquivos.length ? "ok" : "");
 }
 
 async function lerArquivoPlanilhaConsolidado(file){
   if(!window.XLSX) throw new Error("Biblioteca de leitura do Excel não carregada. Verifique a conexão com a internet e tente novamente.");
   const buffer = await file.arrayBuffer();
-  const wb = XLSX.read(buffer, { type: "array", cellDates: true });
-  if(!wb.SheetNames.length) throw new Error("A planilha não possui abas.");
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const matriz = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: true });
-  if(!matriz.length) throw new Error("A primeira aba da planilha está vazia.");
+  const ehCsv = /\.csv$/i.test(file.name) || String(file.type || "").includes("csv");
+  let wb;
+  if(ehCsv){
+    // CSVs de inventário normalmente são exportados em Windows-1252/Latin-1.
+    // Tentamos UTF-8 e, se houver caracteres inválidos, Windows-1252.
+    let texto;
+    try { texto = new TextDecoder("utf-8", {fatal:true}).decode(buffer); }
+    catch(_) { texto = new TextDecoder("windows-1252").decode(buffer); }
+    wb = XLSX.read(texto, { type:"string", cellDates:true, raw:true, FS:";" });
+  } else {
+    wb = XLSX.read(buffer, { type:"array", cellDates:true, raw:true });
+  }
+  if(!wb.SheetNames.length) throw new Error(`O arquivo "${file.name}" não possui abas.`);
 
-  // Localiza automaticamente a linha de cabeçalho, mesmo que existam
-  // título, CIE ou outras informações antes da tabela principal.
+  // Procura a melhor aba, não apenas a primeira, para planilhas que possuem capa/resumo.
+  let melhor = null;
   const possiveis = Object.values(CONSOLIDADO_ALIASES).flat().map(normalizarCabecalhoConsolidado);
-  let headerIndex = 0, melhorPontuacao = 0;
-  matriz.slice(0, 30).forEach((linha, idx) => {
-    const pontuacao = linha.map(normalizarCabecalhoConsolidado).filter(v => possiveis.includes(v)).length;
-    if(pontuacao > melhorPontuacao){ melhorPontuacao = pontuacao; headerIndex = idx; }
-  });
-  const headers = (matriz[headerIndex] || []).map((v,i) => String(v ?? "").trim() || `Coluna ${i+1}`);
-  const rows = matriz.slice(headerIndex + 1)
-    .filter(linha => linha.some(v => String(v ?? "").trim() !== ""))
-    .map(linha => Object.fromEntries(headers.map((h,i) => [h, linha[i] ?? ""])));
-  if(!rows.length) throw new Error("Não encontrei linhas de dados após o cabeçalho da primeira aba.");
-  return { wb, rows, sheetName: wb.SheetNames[0], headerIndex: headerIndex + 1 };
+  for(const sheetName of wb.SheetNames){
+    const ws = wb.Sheets[sheetName];
+    const matriz = XLSX.utils.sheet_to_json(ws, {header:1, defval:"", raw:true});
+    if(!matriz.length) continue;
+    let headerIndex = -1, melhorPontuacao = 0;
+    matriz.slice(0,40).forEach((linha, idx) => {
+      const pontuacao = linha.map(normalizarCabecalhoConsolidado).filter(v => possiveis.includes(v)).length;
+      if(pontuacao > melhorPontuacao){ melhorPontuacao = pontuacao; headerIndex = idx; }
+    });
+    if(headerIndex < 0) continue;
+    const headers = (matriz[headerIndex] || []).map((v,i)=>String(v ?? "").trim() || `Coluna ${i+1}`);
+    const rows = matriz.slice(headerIndex+1)
+      .filter(linha => linha.some(v => String(v ?? "").trim() !== ""))
+      .map(linha => Object.fromEntries(headers.map((h,i)=>[h,linha[i] ?? ""])));
+    if(!rows.length) continue;
+    const score = melhorPontuacao + Math.min(rows.length/10000, 1);
+    if(!melhor || score > melhor.score) melhor = {rows, sheetName, headerIndex:headerIndex+1, score};
+  }
+  if(!melhor) throw new Error(`Não encontrei uma tabela de inventário válida no arquivo "${file.name}".`);
+  return melhor;
 }
 
 function detectarCabecalhosConsolidado(rows){
-  const headers = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  const headers = [...new Set(rows.flatMap(r=>Object.keys(r)))];
   const map = {};
-  for(const [campo, aliases] of Object.entries(CONSOLIDADO_ALIASES)) map[campo] = acharColunaConsolidado(headers, aliases);
-  return {headers, map};
+  for(const [campo,aliases] of Object.entries(CONSOLIDADO_ALIASES)) map[campo] = acharColunaConsolidado(headers,aliases);
+  return {headers,map};
 }
 
-function montarRelatorioConsolidado(rows, arquivo){
-  const {headers, map} = detectarCabecalhosConsolidado(rows);
-  if(!map.grupo && !map.modelo && !map.fabricante) {
-    throw new Error("Não encontrei colunas de grupo/tipo, fabricante ou modelo. A planilha precisa ter pelo menos uma dessas informações.");
-  }
-
+function montarRelatorioConsolidadoBatch(arquivosDados){
   const grupos = new Map();
   const ambientes = new Map();
   const porTipo = new Map();
-  let total = 0, disponiveis = 0, danificados = 0, manutencao = 0, inservivel = 0;
-  let identificacao = "";
+  const arquivos = [];
+  const alertas = [];
+  let total=0, disponiveis=0, danificados=0, manutencao=0, inservivel=0;
+  const identificacoes = [];
 
-  for(const row of rows){
-    const grupo = textoConsolidado(valorColunaConsolidado(row,map.grupo), "Não informado");
-    const fabricante = textoConsolidado(valorColunaConsolidado(row,map.fabricante), "Não informado");
-    const modelo = textoConsolidado(valorColunaConsolidado(row,map.modelo), "Não informado");
-    const ambiente = textoConsolidado(valorColunaConsolidado(row,map.ambiente), "Não informado");
-
-    let qtd = map.quantidade ? numeroConsolidado(valorColunaConsolidado(row,map.quantidade)) : 1;
-    if(qtd <= 0) qtd = 1;
-
-    const hasStatusCols = !!(map.disponiveis || map.danificados || map.manutencao || map.inservivel);
-    const d = map.disponiveis ? numeroConsolidado(valorColunaConsolidado(row,map.disponiveis)) : 0;
-    const da = map.danificados ? numeroConsolidado(valorColunaConsolidado(row,map.danificados)) : 0;
-    const ma = map.manutencao ? numeroConsolidado(valorColunaConsolidado(row,map.manutencao)) : 0;
-    const ins = map.inservivel ? numeroConsolidado(valorColunaConsolidado(row,map.inservivel)) : 0;
-
-    const key = chaveGrupoConsolidado(grupo,fabricante,modelo);
-    if(!grupos.has(key)) grupos.set(key, {grupo,fabricante,modelo,total:0,disponiveis:0,danificados:0,manutencao:0,inservivel:0});
-    const g = grupos.get(key);
-    g.total += hasStatusCols ? Math.max(qtd,d+da+ma+ins) : qtd;
-    if(hasStatusCols){
-      g.disponiveis += d; g.danificados += da; g.manutencao += ma; g.inservivel += ins;
-    }else{
-      const status = normalizarCabecalhoConsolidado(row.Status || row.status || row.Situacao || row.situacao || "");
-      if(status.includes("dispon")) g.disponiveis += qtd;
-      else if(status.includes("danif")) g.danificados += qtd;
-      else if(status.includes("manut")) g.manutencao += qtd;
-      else if(status.includes("inserv")) g.inservivel += qtd;
-      else g.disponiveis += qtd;
+  for(const dados of arquivosDados){
+    const {headers,map} = detectarCabecalhosConsolidado(dados.rows);
+    if(!map.grupo && !map.modelo && !map.fabricante) throw new Error(`A planilha "${dados.file.name}" não possui colunas reconhecíveis de grupo/tipo, fabricante ou modelo.`);
+    if(!map.status && !(map.disponiveis || map.danificados || map.manutencao || map.inservivel)){
+      throw new Error(`A planilha "${dados.file.name}" não possui uma coluna de status reconhecível. Nenhuma quantidade será presumida como disponível.`);
     }
 
-    total += g === grupos.get(key) ? 0 : 0; // total consolidado é calculado abaixo
-    ambientes.set(ambiente, (ambientes.get(ambiente) || 0) + (hasStatusCols ? Math.max(qtd,d+da+ma+ins) : qtd));
-    porTipo.set(grupo, (porTipo.get(grupo) || 0) + (hasStatusCols ? Math.max(qtd,d+da+ma+ins) : qtd));
+    let arquivoTotal=0, arquivoDisp=0, arquivoDan=0, arquivoMan=0, arquivoIns=0, naoClassificados=0;
+    for(const row of dados.rows){
+      const grupo = textoConsolidado(valorColunaConsolidado(row,map.grupo), "Não informado");
+      const fabricante = textoConsolidado(valorColunaConsolidado(row,map.fabricante), "Não informado");
+      const modelo = textoConsolidado(valorColunaConsolidado(row,map.modelo), "Não informado");
+      const ambiente = textoConsolidado(valorColunaConsolidado(row,map.ambiente), "Não informado");
 
-    if(!identificacao){
-      const cie = textoConsolidado(valorColunaConsolidado(row,map.cie), "");
-      const escola = textoConsolidado(valorColunaConsolidado(row,map.escola), "");
-      const inv = textoConsolidado(valorColunaConsolidado(row,map.inventario), "");
-      if(cie || escola) identificacao = [cie, escola, inv || "INVENTÁRIO"].filter(Boolean).join(" - ");
+      const qtdInformada = map.quantidade ? numeroConsolidado(valorColunaConsolidado(row,map.quantidade)) : 0;
+      const temColunasStatusNumericas = !!(map.disponiveis || map.danificados || map.manutencao || map.inservivel);
+      const d = map.disponiveis ? numeroConsolidado(valorColunaConsolidado(row,map.disponiveis)) : 0;
+      const da = map.danificados ? numeroConsolidado(valorColunaConsolidado(row,map.danificados)) : 0;
+      const ma = map.manutencao ? numeroConsolidado(valorColunaConsolidado(row,map.manutencao)) : 0;
+      const ins = map.inservivel ? numeroConsolidado(valorColunaConsolidado(row,map.inservivel)) : 0;
+      const status = interpretarStatusConsolidado(map.status ? valorColunaConsolidado(row,map.status) : "");
+
+      // Inventário por equipamento: cada linha preenchida representa 1 equipamento.
+      // Se existir quantidade explícita, ela é respeitada. Nunca criamos disponibilidade por inferência.
+      let qtd = qtdInformada > 0 ? qtdInformada : 1;
+      let totalLinha = qtd;
+      let statusCounts = {disponiveis:0,danificados:0,manutencao:0,inservivel:0};
+      if(temColunasStatusNumericas){
+        const somaStatus = d+da+ma+ins;
+        totalLinha = qtdInformada > 0 ? Math.max(qtdInformada,somaStatus) : somaStatus;
+        if(totalLinha <= 0){ totalLinha = qtd; naoClassificados += qtd; }
+        statusCounts = {disponiveis:d,danificados:da,manutencao:ma,inservivel:ins};
+        const diferenca = totalLinha - somaStatus;
+        if(diferenca > 0) naoClassificados += diferenca;
+      } else if(status){
+        statusCounts[status] = qtd;
+      } else {
+        naoClassificados += qtd;
+      }
+
+      const key = chaveGrupoConsolidado(grupo,fabricante,modelo);
+      if(!grupos.has(key)) grupos.set(key,{grupo,fabricante,modelo,total:0,disponiveis:0,danificados:0,manutencao:0,inservivel:0});
+      const g=grupos.get(key);
+      g.total += totalLinha;
+      g.disponiveis += statusCounts.disponiveis;
+      g.danificados += statusCounts.danificados;
+      g.manutencao += statusCounts.manutencao;
+      g.inservivel += statusCounts.inservivel;
+
+      arquivoTotal += totalLinha;
+      arquivoDisp += statusCounts.disponiveis;
+      arquivoDan += statusCounts.danificados;
+      arquivoMan += statusCounts.manutencao;
+      arquivoIns += statusCounts.inservivel;
+      ambientes.set(ambiente,(ambientes.get(ambiente)||0)+totalLinha);
+      porTipo.set(grupo,(porTipo.get(grupo)||0)+totalLinha);
+
+      if(!identificacoes.length){
+        const cie=String(valorColunaConsolidado(row,map.cie)||"").trim();
+        const escola=String(valorColunaConsolidado(row,map.escola)||"").trim();
+        const inv=String(valorColunaConsolidado(row,map.inventario)||"").trim();
+        if(cie || escola) identificacoes.push([cie,escola,inv||"INVENTÁRIO"].filter(Boolean).join(" - "));
+      }
     }
+    if(naoClassificados > 0){
+      alertas.push(`${dados.file.name}: ${naoClassificados} equipamento(s) ficaram sem status identificável.`);
+    }
+    const esperado = arquivoDisp+arquivoDan+arquivoMan+arquivoIns+naoClassificados;
+    if(esperado !== arquivoTotal) alertas.push(`${dados.file.name}: soma de status (${esperado}) diferente do total (${arquivoTotal}).`);
+    arquivos.push({nome:dados.file.name,linhas:dados.rows.length,total:arquivoTotal,disponiveis:arquivoDisp,danificados:arquivoDan,manutencao:arquivoMan,inservivel:arquivoIns,naoClassificados});
+    total += arquivoTotal; disponiveis += arquivoDisp; danificados += arquivoDan; manutencao += arquivoMan; inservivel += arquivoIns;
   }
 
-  const linhas = [...grupos.values()];
-  total = linhas.reduce((s,g)=>s+g.total,0);
-  disponiveis = linhas.reduce((s,g)=>s+g.disponiveis,0);
-  danificados = linhas.reduce((s,g)=>s+g.danificados,0);
-  manutencao = linhas.reduce((s,g)=>s+g.manutencao,0);
-  inservivel = linhas.reduce((s,g)=>s+g.inservivel,0);
+  if(total !== disponiveis+danificados+manutencao+inservivel){
+    const naoClassificados = total-(disponiveis+danificados+manutencao+inservivel);
+    alertas.push(`Lote: ${naoClassificados} equipamento(s) sem status. O PDF não será gerado enquanto houver registros não classificados.`);
+  }
 
   return {
     titulo: $("consolidadoTitulo")?.value.trim() || "CONSOLIDADO DO INVENTÁRIO POR GRUPOS",
-    subtitulo: $("consolidadoSubtitulo")?.value.trim() || identificacao || arquivo.name.replace(/\.[^.]+$/,""),
-    total, disponiveis, danificados, manutencao, inservivel,
-    linhas: linhas.sort((a,b)=> a.grupo.localeCompare(b.grupo,"pt-BR") || a.fabricante.localeCompare(b.fabricante,"pt-BR") || a.modelo.localeCompare(b.modelo,"pt-BR")),
-    porTipo: [...porTipo.entries()].sort((a,b)=>b[1]-a[1]),
-    ambientes: [...ambientes.entries()].sort((a,b)=>b[1]-a[1]),
-    arquivo: arquivo.name,
-    headers,
-    mapa: map
+    subtitulo: $("consolidadoSubtitulo")?.value.trim() || (arquivos.length===1 ? (identificacoes[0] || arquivos[0].nome.replace(/\.[^.]+$/,"")) : `CONSOLIDADO GERAL - ${arquivos.length} PLANILHAS`),
+    total,disponiveis,danificados,manutencao,inservivel,
+    linhas:[...grupos.values()].sort((a,b)=>a.grupo.localeCompare(b.grupo,"pt-BR")||a.fabricante.localeCompare(b.fabricante,"pt-BR")||a.modelo.localeCompare(b.modelo,"pt-BR")),
+    porTipo:[...porTipo.entries()].sort((a,b)=>b[1]-a[1]),
+    ambientes:[...ambientes.entries()].sort((a,b)=>b[1]-a[1]),
+    arquivos,alertas,headers:arquivosDados[0]?.headers || [],
+    totalmenteClassificado: total === disponiveis+danificados+manutencao+inservivel
   };
 }
 
 function renderRelatorioConsolidado(rel){
-  const preview = $("consolidadoPreview");
-  const statsEl = $("consolidadoStats");
-  const tbody = $("tbodyConsolidadoEscolas");
-  const porTipoEl = $("consolidadoPorTipo");
-  const ambienteEl = $("consolidadoAmbiente");
-  if(!preview || !statsEl || !tbody) return;
+  const preview=$("consolidadoPreview"), statsEl=$("consolidadoStats"), tbody=$("tbodyConsolidadoEscolas"), porTipoEl=$("consolidadoPorTipo"), ambienteEl=$("consolidadoAmbiente");
+  if(!preview||!statsEl||!tbody) return;
+  preview.hidden=false;
+  const titulo=$("consolidadoPreviewTitulo"),subtitulo=$("consolidadoPreviewSubtitulo"),fonte=$("consolidadoFonte"),gerado=$("consolidadoGeradoEm");
+  if(titulo) titulo.textContent=String(rel.titulo).toUpperCase();
+  if(subtitulo) subtitulo.textContent=String(rel.subtitulo).toUpperCase();
+  if(fonte) fonte.textContent=`Fonte: dados das ${rel.arquivos.length} planilha(s). Consolidação dos ${rel.total} registros/equipamentos.`;
+  if(gerado) gerado.textContent=`Gerado em ${new Date().toLocaleString("pt-BR")}`;
+  const card=(valor,label,cls="")=>`<div class="consolidadoReportStat ${cls}"><span>${label}</span><strong>${valor}</strong></div>`;
+  statsEl.innerHTML=[card(rel.total,"TOTAL"),card(rel.disponiveis,"DISPONÍVEIS","isAvailable"),card(rel.danificados,"DANIFICADOS","isDamaged"),card(rel.manutencao,"MANUTENÇÃO","isMaintenance"),card(rel.inservivel,"INSERVÍVEL","isUnserviceable")].join("");
+  tbody.innerHTML=rel.linhas.map(g=>`<tr><td>${escapeHtml(g.grupo)}</td><td>${escapeHtml(g.fabricante)}</td><td>${escapeHtml(g.modelo)}</td><td class="num totalNum">${g.total}</td><td class="num availableNum">${g.disponiveis}</td><td class="num damagedNum">${g.danificados}</td><td class="num maintenanceNum">${g.manutencao} / ${g.inservivel}</td></tr>`).join("")||`<tr><td colspan="7" class="emptyCell">Nenhum dado consolidado.</td></tr>`;
+  if(porTipoEl) porTipoEl.innerHTML=rel.porTipo.map(([nome,qtd])=>`<li><span>${escapeHtml(nome)}</span><strong>${qtd}</strong></li>`).join("")||`<li><span>Não informado</span><strong>0</strong></li>`;
+  if(ambienteEl) ambienteEl.innerHTML=rel.ambientes.map(([nome,qtd])=>`<li><span>${escapeHtml(nome)}</span><strong>${qtd}</strong></li>`).join("")||`<li><span>Não informado</span><strong>0</strong></li>`;
 
-  preview.hidden = false;
-  const titulo = $("consolidadoPreviewTitulo");
-  const subtitulo = $("consolidadoPreviewSubtitulo");
-  const fonte = $("consolidadoFonte");
-  const gerado = $("consolidadoGeradoEm");
-  if(titulo) titulo.textContent = String(rel.titulo).toUpperCase();
-  if(subtitulo) subtitulo.textContent = String(rel.subtitulo).toUpperCase();
-  if(fonte) fonte.textContent = `Fonte: dados da planilha. Consolidação dos ${rel.total} registros/equipamentos.`;
-  if(gerado) gerado.textContent = `Gerado em ${new Date().toLocaleString("pt-BR")}`;
-
-  const card = (valor, label, cls="") => `<div class="consolidadoReportStat ${cls}"><span>${label}</span><strong>${valor}</strong></div>`;
-  statsEl.innerHTML = [
-    card(rel.total,"TOTAL"),
-    card(rel.disponiveis,"DISPONÍVEIS","isAvailable"),
-    card(rel.danificados,"DANIFICADOS","isDamaged"),
-    card(rel.manutencao,"MANUTENÇÃO","isMaintenance"),
-    card(rel.inservivel,"INSERVÍVEL","isUnserviceable")
-  ].join("");
-
-  tbody.innerHTML = rel.linhas.map(g => `<tr>
-    <td>${escapeHtml(g.grupo)}</td>
-    <td>${escapeHtml(g.fabricante)}</td>
-    <td>${escapeHtml(g.modelo)}</td>
-    <td class="num totalNum">${g.total}</td>
-    <td class="num availableNum">${g.disponiveis}</td>
-    <td class="num damagedNum">${g.danificados}</td>
-    <td class="num maintenanceNum">${g.manutencao} / ${g.inservivel}</td>
-  </tr>`).join("") || `<tr><td colspan="7" class="emptyCell">Nenhum dado consolidado.</td></tr>`;
-
-  if(porTipoEl){
-    porTipoEl.innerHTML = rel.porTipo.map(([nome,qtd]) => `<li><span>${escapeHtml(nome)}</span><strong>${qtd}</strong></li>`).join("") || `<li><span>Não informado</span><strong>0</strong></li>`;
-  }
-  if(ambienteEl){
-    ambienteEl.innerHTML = rel.ambientes.map(([nome,qtd]) => `<li><span>${escapeHtml(nome)}</span><strong>${qtd}</strong></li>`).join("") || `<li><span>Não informado</span><strong>0</strong></li>`;
+  const info=$("consolidadoImportInfo");
+  if(info){
+    const resumo=rel.arquivos.map(a=>`<li><strong>${escapeHtml(a.nome)}</strong>: ${a.total} equipamento(s) · ${a.disponiveis} disp. · ${a.danificados} danif. · ${a.manutencao} manut. · ${a.inservivel} inserv.</li>`).join("");
+    const alerta=rel.alertas.length?`<div class="consolidadoValidacao warn"><strong>⚠️ Atenção</strong><ul>${rel.alertas.map(x=>`<li>${escapeHtml(x)}</li>`).join("")}</ul></div>`:`<div class="consolidadoValidacao ok"><strong>✓ Conferência concluída.</strong> A soma dos status corresponde exatamente ao total consolidado.</div>`;
+    info.innerHTML=`<strong>Conferência das planilhas</strong><ul>${resumo}</ul>${alerta}`;
+    info.hidden=false;
   }
 }
 
-async function processarPlanilhaConsolidado(){
-  const msg = $("consolidadoImportMsg");
-  const btn = $("btnProcessarConsolidado");
-  if(!consolidadoPlanilhaArquivo) return;
+async function processarPlanilhasConsolidado(){
+  const msg=$("consolidadoImportMsg"),btn=$("btnProcessarConsolidado");
+  if(!consolidadoPlanilhaArquivos.length) return;
   try{
-    if(btn) btn.disabled = true;
-    setMsg(msg,"Lendo e consolidando a planilha...","");
-    const dados = await lerArquivoPlanilhaConsolidado(consolidadoPlanilhaArquivo);
-    consolidadoRelatorio = montarRelatorioConsolidado(dados.rows, consolidadoPlanilhaArquivo);
-    renderRelatorioConsolidado(consolidadoRelatorio);
-    $("btnBaixarConsolidadoPdf") && ($("btnBaixarConsolidadoPdf").disabled = false);
-    const info = $("consolidadoImportInfo");
-    if(info){
-      info.hidden=false;
-      info.innerHTML = `<strong>Planilha processada.</strong> Aba: ${escapeHtml(dados.sheetName)} · cabeçalho na linha ${dados.headerIndex} · ${dados.rows.length} linha(s) · ${consolidadoRelatorio.linhas.length} grupo(s) consolidados.`;
+    if(btn) btn.disabled=true;
+    setMsg(msg,`Lendo e validando ${consolidadoPlanilhaArquivos.length} planilha(s)...`,"");
+    const dados=[];
+    for(const file of consolidadoPlanilhaArquivos){
+      const lidos=await lerArquivoPlanilhaConsolidado(file);
+      dados.push({...lidos,file});
     }
-    setMsg(msg,"Consolidado gerado com sucesso. Revise os dados acima e clique em “Baixar PDF”.","ok");
+    consolidadoRelatorio=montarRelatorioConsolidadoBatch(dados);
+    renderRelatorioConsolidado(consolidadoRelatorio);
+    const pdf=$("btnBaixarConsolidadoPdf");
+    if(pdf) pdf.disabled=!consolidadoRelatorio.totalmenteClassificado;
+    if(consolidadoRelatorio.totalmenteClassificado) setMsg(msg,"Consolidado gerado com sucesso. Revise os dados e clique em “Baixar PDF”.","ok");
+    else setMsg(msg,"O consolidado foi montado, mas existem registros sem status. Corrija a planilha antes de gerar o PDF.","err");
   }catch(e){
-    console.error("processarPlanilhaConsolidado",e);
-    setMsg(msg,e.message || "Não foi possível processar a planilha.","err");
-    $("btnBaixarConsolidadoPdf") && ($("btnBaixarConsolidadoPdf").disabled = true);
+    console.error("processarPlanilhasConsolidado",e);
+    setMsg(msg,e.message||"Não foi possível processar as planilhas.","err");
+    $("btnBaixarConsolidadoPdf") && ($("btnBaixarConsolidadoPdf").disabled=true);
   }finally{
-    if(btn) btn.disabled = !consolidadoPlanilhaArquivo;
+    if(btn) btn.disabled=consolidadoPlanilhaArquivos.length===0;
   }
 }
 
 function baixarConsolidadoPdf(){
-  const rel = consolidadoRelatorio;
-  if(!rel) return;
-  if(!window.jspdf?.jsPDF){
-    setMsg($("consolidadoImportMsg"),"Biblioteca de PDF não carregada. Verifique a conexão e tente novamente.","err");
-    return;
-  }
+  const rel=consolidadoRelatorio;
+  if(!rel||!rel.totalmenteClassificado) return;
+  if(!window.jspdf?.jsPDF){setMsg($("consolidadoImportMsg"),"Biblioteca de PDF não carregada. Verifique a conexão e tente novamente.","err");return;}
   try{
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const navy = [27,57,84];
-    const text = [31,41,55];
-    const muted = [101,116,139];
-    const border = [210,219,230];
-    const green = [20,128,84];
-    const red = [198,48,48];
-    const orange = [181,101,0];
-    const purple = [95,65,160];
-    const margin = 10;
-
-    const drawHeader = () => {
-      doc.setFillColor(...navy);
-      doc.rect(0,0,pageW,25,"F");
-      doc.setTextColor(255,255,255);
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(17.5);
-      const titleLines = doc.splitTextToSize(String(rel.titulo).toUpperCase(), pageW-20);
-      doc.text(titleLines.slice(0,1), margin, 9.5);
-      doc.setFontSize(10.2);
-      const sub = doc.splitTextToSize(String(rel.subtitulo).toUpperCase(), pageW-20);
-      doc.text(sub.slice(0,1), margin, 18);
-    };
-
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight();
+    const navy=[27,57,84],text=[31,41,55],muted=[101,116,139],border=[210,219,230],green=[20,128,84],red=[198,48,48],orange=[181,101,0],purple=[95,65,160],margin=10;
+    const drawHeader=()=>{doc.setFillColor(...navy);doc.rect(0,0,pageW,25,"F");doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(17.5);doc.text(doc.splitTextToSize(String(rel.titulo).toUpperCase(),pageW-20).slice(0,1),margin,9.5);doc.setFontSize(10.2);doc.text(doc.splitTextToSize(String(rel.subtitulo).toUpperCase(),pageW-20).slice(0,1),margin,18);};
     drawHeader();
-    doc.setTextColor(...text);
-    doc.setFont("helvetica","bold");
-    doc.setFontSize(13.5);
-    doc.text("LEVANTAMENTO GERAL",margin,34);
-    doc.setFont("helvetica","normal");
-    doc.setFontSize(9.2);
-    doc.setTextColor(...muted);
-    doc.text("Equipamentos agrupados por tipo, fabricante e modelo. Nenhum equipamento é listado individualmente.",margin,39.8);
-
-    const cards = [
-      ["TOTAL",rel.total,text],
-      ["DISPONÍVEIS",rel.disponiveis,green],
-      ["DANIFICADOS",rel.danificados,red],
-      ["MANUTENÇÃO",rel.manutencao,orange],
-      ["INSERVÍVEL",rel.inservivel,purple]
-    ];
-    const gap=2.2, y=45.5, cardH=17, cardW=(pageW-20-gap*4)/5;
-    cards.forEach((c,i)=>{
-      const x=margin+i*(cardW+gap);
-      doc.setDrawColor(...border);
-      doc.setFillColor(255,255,255);
-      doc.roundedRect(x,y,cardW,cardH,2.5,2.5,"FD");
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(7.1);
-      doc.setTextColor(...muted);
-      doc.text(c[0],x+3,y+5.2);
-      doc.setFontSize(14.8);
-      doc.setTextColor(...c[2]);
-      doc.text(String(c[1]),x+3,y+13.3);
-    });
-
-    const tableBody = rel.linhas.map(g=>[
-      g.grupo,g.fabricante,g.modelo,String(g.total),String(g.disponiveis),String(g.danificados),`${g.manutencao} / ${g.inservivel}`
-    ]);
-
-    doc.autoTable({
-      startY:67.5,
-      margin:{left:margin,right:margin,top:30,bottom:20},
-      head:[["GRUPO","FABRICANTE","MODELO / LINHA","TOTAL","DISP.","DANIF.","MANUT. / INSERV."]],
-      body:tableBody,
-      theme:"grid",
-      styles:{font:"helvetica",fontSize:8.4,cellPadding:{top:3,bottom:3,left:2,right:2},textColor:text,lineColor:[229,233,238],lineWidth:.18,overflow:"linebreak",valign:"middle"},
-      headStyles:{fillColor:[255,255,255],textColor:muted,fontStyle:"bold",lineColor:[205,214,225],lineWidth:.3,halign:"left"},
-      alternateRowStyles:{fillColor:[252,253,254]},
-      columnStyles:{
-        0:{cellWidth:41},1:{cellWidth:28},2:{cellWidth:54},
-        3:{cellWidth:15,halign:"center"},4:{cellWidth:15,halign:"center"},5:{cellWidth:15,halign:"center"},6:{cellWidth:22,halign:"center"}
-      },
-      didParseCell:(data)=>{
-        if(data.section!=="body") return;
-        if([3,4,5].includes(data.column.index)) data.cell.styles.fontStyle="bold";
-        if(data.column.index===4){data.cell.styles.textColor=green;}
-        if(data.column.index===5){data.cell.styles.textColor=red;}
-        if(data.column.index===6 && String(data.cell.raw)!=="0 / 0"){data.cell.styles.textColor=orange;data.cell.styles.fontStyle="bold";}
-      },
-      didDrawPage:(data)=>{
-        if(data.pageNumber>1){
-          drawHeader();
-        }
-      }
-    });
-
-    let yy = (doc.lastAutoTable?.finalY || 80) + 9;
-    const boxH = 42;
-    if(yy + boxH + 15 > pageH){
-      doc.addPage();
-      yy = 15;
-    }
-
-    const boxGap = 5;
-    const boxW = (pageW-20-boxGap)/2;
-    const drawSummaryBox = (x,title,items)=>{
-      doc.setDrawColor(...border);
-      doc.setFillColor(255,255,255);
-      doc.roundedRect(x,yy,boxW,boxH,2.8,2.8,"FD");
-      doc.setFont("helvetica","bold");
-      doc.setFontSize(10.8);
-      doc.setTextColor(...navy);
-      doc.text(title,x+3,yy+7);
-      doc.setFont("helvetica","normal");
-      doc.setFontSize(8.9);
-      doc.setTextColor(...text);
-      items.slice(0,6).forEach(([nome,qtd],i)=>{
-        const ly=yy+15+i*5.5;
-        doc.text(`• ${String(nome)}`,x+4,ly);
-        doc.setFont("helvetica","bold");
-        doc.text(String(qtd),x+boxW-4,ly,{align:"right"});
-        doc.setFont("helvetica","normal");
-      });
-    };
-    drawSummaryBox(margin,"TOTAL POR TIPO",rel.porTipo);
-    drawSummaryBox(margin+boxW+boxGap,"AMBIENTE",rel.ambientes);
-
-    doc.setFont("helvetica","normal");
-    doc.setFontSize(7.2);
-    doc.setTextColor(...muted);
-    doc.text(`Fonte: dados da planilha. Consolidação dos ${rel.total} registros/equipamentos.`,margin,pageH-7);
-    doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`,pageW-margin,pageH-7,{align:"right"});
-
-    const nome = (rel.subtitulo || rel.titulo).replace(/[^a-zA-Z0-9À-ÿ _-]/g,"").trim().replace(/\s+/g,"_").slice(0,80) || "consolidado_inventario";
-    doc.save(`${nome}_consolidado.pdf`);
-    setMsg($("consolidadoImportMsg"),"PDF gerado e baixado com sucesso.","ok");
-  }catch(e){
-    console.error("baixarConsolidadoPdf",e);
-    setMsg($("consolidadoImportMsg"),`Não foi possível gerar o PDF: ${e.message || "erro desconhecido"}`,"err");
-  }
+    doc.setTextColor(...text);doc.setFont("helvetica","bold");doc.setFontSize(13.5);doc.text("LEVANTAMENTO GERAL",margin,34);doc.setFont("helvetica","normal");doc.setFontSize(9.2);doc.setTextColor(...muted);doc.text("Equipamentos agrupados por tipo, fabricante e modelo. Nenhum equipamento é listado individualmente.",margin,39.8);
+    const cards=[["TOTAL",rel.total,text],["DISPONÍVEIS",rel.disponiveis,green],["DANIFICADOS",rel.danificados,red],["MANUTENÇÃO",rel.manutencao,orange],["INSERVÍVEL",rel.inservivel,purple]],gap=2.2,y=45.5,cardH=17,cardW=(pageW-20-gap*4)/5;
+    cards.forEach((c,i)=>{const x=margin+i*(cardW+gap);doc.setDrawColor(...border);doc.setFillColor(255,255,255);doc.roundedRect(x,y,cardW,cardH,2.5,2.5,"FD");doc.setFont("helvetica","bold");doc.setFontSize(7.1);doc.setTextColor(...muted);doc.text(c[0],x+3,y+5.2);doc.setFontSize(14.8);doc.setTextColor(...c[2]);doc.text(String(c[1]),x+3,y+13.3);});
+    const tableBody=rel.linhas.map(g=>[g.grupo,g.fabricante,g.modelo,String(g.total),String(g.disponiveis),String(g.danificados),`${g.manutencao} / ${g.inservivel}`]);
+    doc.autoTable({startY:67.5,margin:{left:margin,right:margin,top:30,bottom:20},head:[["GRUPO","FABRICANTE","MODELO / LINHA","TOTAL","DISP.","DANIF.","MANUT. / INSERV."]],body:tableBody,theme:"grid",styles:{font:"helvetica",fontSize:8.4,cellPadding:{top:3,bottom:3,left:2,right:2},textColor:text,lineColor:[229,233,238],lineWidth:.18,overflow:"linebreak",valign:"middle"},headStyles:{fillColor:[255,255,255],textColor:muted,fontStyle:"bold",lineColor:[205,214,225],lineWidth:.3,halign:"left"},alternateRowStyles:{fillColor:[252,253,254]},columnStyles:{0:{cellWidth:41},1:{cellWidth:28},2:{cellWidth:54},3:{cellWidth:15,halign:"center"},4:{cellWidth:15,halign:"center"},5:{cellWidth:15,halign:"center"},6:{cellWidth:22,halign:"center"}},didParseCell:(data)=>{if(data.section!=="body")return;if([3,4,5].includes(data.column.index))data.cell.styles.fontStyle="bold";if(data.column.index===4)data.cell.styles.textColor=green;if(data.column.index===5)data.cell.styles.textColor=red;if(data.column.index===6&&String(data.cell.raw)!=="0 / 0"){data.cell.styles.textColor=orange;data.cell.styles.fontStyle="bold";}},didDrawPage:(data)=>{if(data.pageNumber>1)drawHeader();}});
+    let yy=(doc.lastAutoTable?.finalY||80)+9,boxH=42;
+    if(yy+boxH+15>pageH){doc.addPage();yy=15;}
+    const boxGap=5,boxW=(pageW-20-boxGap)/2;
+    const drawSummaryBox=(x,title,items)=>{doc.setDrawColor(...border);doc.setFillColor(255,255,255);doc.roundedRect(x,yy,boxW,boxH,2.8,2.8,"FD");doc.setFont("helvetica","bold");doc.setFontSize(10.8);doc.setTextColor(...navy);doc.text(title,x+3,yy+7);doc.setFont("helvetica","normal");doc.setFontSize(8.9);doc.setTextColor(...text);items.slice(0,6).forEach(([nome,qtd],i)=>{const ly=yy+15+i*5.5;doc.text(`• ${String(nome)}`,x+4,ly);doc.setFont("helvetica","bold");doc.text(String(qtd),x+boxW-4,ly,{align:"right"});doc.setFont("helvetica","normal");});};
+    drawSummaryBox(margin,"TOTAL POR TIPO",rel.porTipo);drawSummaryBox(margin+boxW+boxGap,"AMBIENTE",rel.ambientes);
+    doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(...muted);doc.text(`Fonte: dados das ${rel.arquivos.length} planilha(s). Consolidação dos ${rel.total} registros/equipamentos.`,margin,pageH-7);doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`,pageW-margin,pageH-7,{align:"right"});
+    const nome=(rel.subtitulo||rel.titulo).replace(/[^a-zA-Z0-9À-ÿ _-]/g,"").trim().replace(/\s+/g,"_").slice(0,80)||"consolidado_inventario";
+    doc.save(`${nome}_consolidado.pdf`);setMsg($("consolidadoImportMsg"),"PDF gerado e baixado com sucesso.","ok");
+  }catch(e){console.error("baixarConsolidadoPdf",e);setMsg($("consolidadoImportMsg"),`Não foi possível gerar o PDF: ${e.message||"erro desconhecido"}`,"err");}
 }
 
 iniciarUploadConsolidado();
+

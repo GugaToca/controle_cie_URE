@@ -2583,6 +2583,16 @@ body.notificacaoModalOpen { overflow:hidden; }
 .consolidadoImportActions .btn{min-height:44px;}
 .consolidadoImportInfo{margin-top:16px;padding:14px 16px;border:1px solid var(--border,#e5e7eb);border-radius:12px;background:var(--card,#fff);}
 .consolidadoImportInfo strong{font-weight:800;}
+
+.consolidadoArquivosLista{margin-top:12px;display:grid;gap:7px;}
+.consolidadoArquivoItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border:1px solid var(--border,#e5e7eb);border-radius:10px;background:var(--card,#fff);font-size:.86rem;}
+.consolidadoArquivoItem .arquivoNome{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.consolidadoArquivoItem .arquivoMeta{color:#64748b;font-size:.78rem;white-space:nowrap;}
+.consolidadoValidacao{margin-top:12px;padding:12px 14px;border-radius:10px;border:1px solid #d2dce7;background:#fff;}
+.consolidadoValidacao.ok{border-color:#b7dfcc;}
+.consolidadoValidacao.warn{border-color:#f1d29b;}
+.consolidadoValidacao.err{border-color:#efb7b7;}
+.consolidadoValidacao ul{margin:7px 0 0 18px;padding:0;}
 .consolidadoImportMeta{display:grid;grid-template-columns:1fr 1.35fr;gap:14px;margin:18px 0 14px;}
 .consolidadoImportMeta .formGroup{margin:0;}
 

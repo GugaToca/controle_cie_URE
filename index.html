@@ -406,10 +406,10 @@ Importar em massa
       <div class="consolidadoUploadArea">
         <label class="consolidadoDropzone" for="consolidadoFileInput" id="consolidadoDropzone">
           <span class="consolidadoUploadIcon">📥</span>
-          <strong id="consolidadoFileLabel">Clique para selecionar a planilha</strong>
-          <span>ou arraste o arquivo para esta área</span>
-          <small>Excel / CSV • processamento feito no navegador</small>
-          <input id="consolidadoFileInput" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+          <strong id="consolidadoFileLabel">Clique para selecionar as planilhas</strong>
+          <span>ou arraste uma ou várias planilhas para esta área</span>
+          <small>Excel / CSV • múltiplos arquivos • processamento feito no navegador</small>
+          <input id="consolidadoFileInput" type="file" multiple accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
         </label>
 
         <div class="consolidadoImportMeta">
@@ -425,11 +425,12 @@ Importar em massa
       </div>
 
       <div class="consolidadoImportActions">
-        <button id="btnProcessarConsolidado" class="btn primary" type="button" disabled>⚙️ Processar planilha</button>
+        <button id="btnProcessarConsolidado" class="btn primary" type="button" disabled>⚙️ Processar planilhas</button>
         <button id="btnBaixarConsolidadoPdf" class="btn btnSecondary" type="button" disabled>⬇️ Baixar PDF</button>
       </div>
 
       <div id="consolidadoImportInfo" class="consolidadoImportInfo" hidden></div>
+      <div id="consolidadoArquivosLista" class="consolidadoArquivosLista" hidden></div>
       <div id="consolidadoImportMsg" class="msg" role="status" aria-live="polite"></div>
     </section>
 
