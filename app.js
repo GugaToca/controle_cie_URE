@@ -592,9 +592,13 @@ async function loadList(){
       }
     }
 
+    const seloNivelEnsino = s.nivelEnsino === "EF" || s.nivelEnsino === "EM/EF"
+      ? `<span class="seloNivelEnsino ${s.nivelEnsino === "EM/EF" ? "seloNivelEnsinoMedio" : "seloNivelEnsinoFundamental"}" title="${s.nivelEnsino === "EF" ? "Ensino Fundamental" : "Ensino Médio e Fundamental"}">${s.nivelEnsino}</span>`
+      : "";
+
     rows += `
     <tr>
-      <td data-label="Escola">${indicadorTecnico} ${escapeHtml(s.nome)}</td>
+      <td data-label="Escola">${indicadorTecnico} ${seloNivelEnsino} ${escapeHtml(s.nome)}</td>
       <td data-label="CIE"><code>${escapeHtml(s.cie)}</code></td>
       <td data-label="Município">${escapeHtml(s.municipio)}</td>
       <td>
@@ -2013,6 +2017,8 @@ const modalEditarEscola = $("modalEditarEscola");
 const formEditarEscola = $("formEditarEscola");
 const editEscolaCie = $("editEscolaCie");
 const editEscolaNome = $("editEscolaNome");
+const editEscolaNivelEnsino = $("editEscolaNivelEnsino");
+const editNivelEnsinoGroup = $("editNivelEnsinoGroup");
 const editEscolaMunicipio = $("editEscolaMunicipio");
 const editEscolaUre = $("editEscolaUre");
 const editEscolaTecnico = $("editEscolaTecnico");
@@ -2055,7 +2061,9 @@ async function abrirModalEditarEscola(cie) {
   if (editEscolaNome) editEscolaNome.value = s.nome || "";
   if (editEscolaMunicipio) editEscolaMunicipio.value = s.municipio || "";
   if (editEscolaUre) editEscolaUre.value = s.ure || "Sao Jose do Rio Preto";
-  
+  if (editEscolaNivelEnsino) editEscolaNivelEnsino.value = ["EF", "EM/EF"].includes(s.nivelEnsino) ? s.nivelEnsino : "";
+  if (editNivelEnsinoGroup) editNivelEnsinoGroup.style.display = isAdministrador() ? "block" : "none";
+
   // Buscar técnico vinculado
   try {
     const vinculoSnap = await getDocs(
@@ -2117,7 +2125,8 @@ formEditarEscola?.addEventListener('submit', async (e) => {
       nomeLower: nome.toLowerCase(),
       municipio,
       municipioLower: municipio.toLowerCase(),
-      ure
+      ure,
+      ...(isAdministrador() ? { nivelEnsino: editEscolaNivelEnsino?.value || "" } : {})
     }, { merge: true });
     
     // Atualizar vínculo com técnico
