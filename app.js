@@ -2516,6 +2516,66 @@ async function carregarPainelVisitas() {
   }
 }
 
+let modoVisualizacaoVisitas = "tudo";
+
+function nomeAnalistaVisita(e) {
+  return listaTecnicosCache.find(t => t.uid === e.tecnicoUid)?.nome ||
+    e.tecnicoNome || "Técnico não identificado";
+}
+
+function ordenarEscolasVisitas(a, b) {
+  if (a.diasSemVisita === null && b.diasSemVisita !== null) return 1;
+  if (b.diasSemVisita === null && a.diasSemVisita !== null) return -1;
+  return (b.diasSemVisita ?? 0) - (a.diasSemVisita ?? 0) ||
+    (a.escolaNome || "").localeCompare(b.escolaNome || "", "pt-BR");
+}
+
+function montarTabelaVisitas(escolas, tituloGrupo = "") {
+  const linhas = [...escolas].sort(ordenarEscolasVisitas).map(e => {
+    const sit = e.situacaoVisita;
+    const analista = nomeAnalistaVisita(e);
+    const podeEditar = isAdministrador() || e.tecnicoUid === currentUid();
+    const dias = e.diasSemVisita === null ? "Sem registro" :
+      e.diasSemVisita === 0 ? "0 dias" :
+      `${e.diasSemVisita} ${e.diasSemVisita === 1 ? "dia" : "dias"}`;
+    const ultima = e.ultimaVisitaCalculada || "";
+    return `
+      <tr class="linhaVisita ${sit.classe}">
+        <td class="colEscola"><strong>${escapeHtml(e.escolaNome || "Escola sem nome")}</strong><small>CIE ${escapeHtml(e.cie || "—")}</small></td>
+        <td>${escapeHtml(e.municipio || "—")}</td>
+        <td>${escapeHtml(e.ure || e.ureNome || "URE Rio Preto")}</td>
+        <td><span class="visitaAnalistaNome">${escapeHtml(analista)}</span></td>
+        <td class="colPeriodo">
+          <span class="visitaPeriodoPill">${escapeHtml(dias)}</span>
+          <small class="visitaResponsavelPeriodo">por ${escapeHtml(analista)}</small>
+          <small class="visitaDataResumo">Última visita: ${formatarDataVisita(ultima)}</small>
+        </td>
+        <td class="colAcaoVisita">
+          ${podeEditar ? `
+            <div class="visitaAcoesLinha">
+              <input type="date" class="inputDataUltimaVisita" data-id="${escapeHtml(e.id)}"
+                value="${escapeHtml(ultima)}" aria-label="Data da última visita de ${escapeHtml(e.escolaNome || "escola")}">
+              <button type="button" class="btn btnSmall btnSalvarUltimaVisita" data-id="${escapeHtml(e.id)}" title="Salvar data">Salvar</button>
+            </div>` : '<span class="visitaSomenteLeitura">Somente consulta</span>'}
+        </td>
+      </tr>`;
+  }).join("");
+
+  return `
+    <section class="visitaTabelaGrupo">
+      ${tituloGrupo ? `<header class="visitaTabelaGrupoHeader"><h3>${escapeHtml(tituloGrupo)}</h3><span>${escolas.length} ${escolas.length === 1 ? "escola" : "escolas"}</span></header>` : ""}
+      <div class="visitaTabelaScroll">
+        <table class="tabelaPainelVisitas">
+          <thead><tr>
+            <th>Escola</th><th>Município</th><th>URE</th><th>Analista</th>
+            <th>Dias s/ Visita</th><th>Ações</th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
 function renderizarPainelVisitas() {
   const lista = $("listaPainelVisitas");
   if (!lista) return;
@@ -2531,9 +2591,10 @@ function renderizarPainelVisitas() {
   if ($("visitasAtencao")) $("visitasAtencao").textContent = atencao;
   if ($("visitasAtrasadas")) $("visitasAtrasadas").textContent = atrasadas;
 
-  let filtradas = painelVisitasDados.filter(e => {
-    const nomeTecnico = listaTecnicosCache.find(t => t.uid === e.tecnicoUid)?.nome || e.tecnicoNome || "Técnico não identificado";
-    const texto = `${e.escolaNome || ""} ${e.cie || ""} ${nomeTecnico} ${e.municipio || ""}`.toLocaleLowerCase("pt-BR");
+  const filtradas = painelVisitasDados.filter(e => {
+    const analista = nomeAnalistaVisita(e);
+    const texto = `${e.escolaNome || ""} ${e.cie || ""} ${analista} ${e.municipio || ""} ${e.ure || ""}`
+      .toLocaleLowerCase("pt-BR");
     return (!termo || texto.includes(termo)) &&
       (filtro === "todos" || e.situacaoVisita.chave === filtro);
   });
@@ -2543,55 +2604,29 @@ function renderizarPainelVisitas() {
     return;
   }
 
-  const grupos = new Map();
-  filtradas.forEach(e => {
-    const tecnico = listaTecnicosCache.find(t => t.uid === e.tecnicoUid);
-    const nome = tecnico?.nome || e.tecnicoNome || "Técnico não identificado";
-    if (!grupos.has(e.tecnicoUid || "sem-tecnico")) grupos.set(e.tecnicoUid || "sem-tecnico", { nome, escolas: [] });
-    grupos.get(e.tecnicoUid || "sem-tecnico").escolas.push(e);
-  });
-
-  const gruposOrdenados = [...grupos.values()].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR"));
-  lista.innerHTML = gruposOrdenados.map(grupo => {
-    grupo.escolas.sort((a,b) => {
-      if (a.diasSemVisita === null && b.diasSemVisita !== null) return 1;
-      if (b.diasSemVisita === null && a.diasSemVisita !== null) return -1;
-      return (b.diasSemVisita ?? 0) - (a.diasSemVisita ?? 0) ||
-        (a.escolaNome || "").localeCompare(b.escolaNome || "", "pt-BR");
+  if (modoVisualizacaoVisitas === "tudo") {
+    lista.innerHTML = montarTabelaVisitas(filtradas);
+  } else {
+    const grupos = new Map();
+    filtradas.forEach(e => {
+      const nome = nomeAnalistaVisita(e);
+      const chave = e.tecnicoUid || nome;
+      if (!grupos.has(chave)) grupos.set(chave, { nome, escolas: [] });
+      grupos.get(chave).escolas.push(e);
     });
-    const itens = grupo.escolas.map(e => {
-      const sit = e.situacaoVisita;
-      const podeEditarVisita = isAdministrador() || e.tecnicoUid === currentUid();
-      const diasTexto = e.diasSemVisita === null ? "Sem histórico" :
-        e.diasSemVisita === 0 ? "Visitada hoje" :
-        `${e.diasSemVisita} ${e.diasSemVisita === 1 ? "dia" : "dias"} sem visita`;
-      return `
-        <article class="visitaEscolaItem ${sit.classe}">
-          <div class="visitaEscolaPrincipal">
-            <strong>${escapeHtml(e.escolaNome || "Escola sem nome")}</strong>
-            <span class="visitaEscolaMeta">CIE ${escapeHtml(e.cie || "—")}${e.municipio ? ` • ${escapeHtml(e.municipio)}` : ""}</span>
-          </div>
-          <div class="visitaEscolaDatas">
-            <span class="visitaStatusPill">${sit.texto}</span>
-            <strong>${diasTexto}</strong>
-            <small>Última visita: ${formatarDataVisita(e.ultimaVisitaCalculada)}</small>
-            ${podeEditarVisita ? `<label class="visitaEditarData"><span>Editar última visita</span><input type="date" class="inputDataUltimaVisita" data-id="${escapeHtml(e.id)}" value="${escapeHtml(e.ultimaVisitaCalculada || "")}"></label>
-            <button type="button" class="btn btnSmall btnSalvarUltimaVisita" data-id="${escapeHtml(e.id)}">Salvar data</button>` : ""}
-          </div>
-        </article>`;
-    }).join("");
-    return `
-      <section class="visitaGrupoTecnico">
-        <header><div><span class="visitaAvatar">${escapeHtml(grupo.nome.split(/\s+/).map(p=>p[0]).slice(0,2).join("").toUpperCase())}</span><h3>${escapeHtml(grupo.nome)}</h3></div><span>${grupo.escolas.length} ${grupo.escolas.length === 1 ? "escola" : "escolas"}</span></header>
-        <div class="visitaGrupoItens">${itens}</div>
-      </section>`;
-  }).join("");
+    lista.innerHTML = [...grupos.values()]
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+      .map(g => montarTabelaVisitas(g.escolas, g.nome))
+      .join("");
+  }
 
   lista.querySelectorAll(".btnSalvarUltimaVisita").forEach(btn => {
     btn.addEventListener("click", async () => {
       const input = lista.querySelector(`.inputDataUltimaVisita[data-id="${btn.dataset.id}"]`);
       const data = input?.value || null;
       try {
+        btn.disabled = true;
+        btn.textContent = "Salvando...";
         await setDoc(doc(db, "escolas_tecnicos", btn.dataset.id), {
           ultimaVisita: data, ultimaVisitaAtualizadaEm: Date.now(),
           ultimaVisitaAtualizadaPor: currentUid()
@@ -2600,10 +2635,29 @@ function renderizarPainelVisitas() {
       } catch (err) {
         console.error("Salvar última visita", err);
         alert("Não foi possível salvar a data da última visita.");
+        btn.disabled = false;
+        btn.textContent = "Salvar";
       }
     });
   });
 }
+
+function definirModoVisualizacaoVisitas(modo) {
+  modoVisualizacaoVisitas = modo;
+  const tudo = $("btnVisitasTudo");
+  const analistas = $("btnVisitasAnalistas");
+  if (tudo) {
+    tudo.classList.toggle("active", modo === "tudo");
+    tudo.setAttribute("aria-pressed", String(modo === "tudo"));
+  }
+  if (analistas) {
+    analistas.classList.toggle("active", modo === "analistas");
+    analistas.setAttribute("aria-pressed", String(modo === "analistas"));
+  }
+  renderizarPainelVisitas();
+}
+$("btnVisitasTudo")?.addEventListener("click", () => definirModoVisualizacaoVisitas("tudo"));
+$("btnVisitasAnalistas")?.addEventListener("click", () => definirModoVisualizacaoVisitas("analistas"));
 
 $("buscaPainelVisitas")?.addEventListener("input", renderizarPainelVisitas);
 $("filtroPainelVisitas")?.addEventListener("change", renderizarPainelVisitas);
