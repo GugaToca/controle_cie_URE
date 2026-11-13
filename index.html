@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260902-consolidado03"/>
+<link rel="stylesheet" href="styles.css?v=20261113-visitas01"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
@@ -97,6 +97,11 @@
 <button class="mainTab" data-page="tecnicos" role="tab" aria-selected="false" aria-controls="page-tecnicos">
 <span class="tabIcon">👨‍🔧</span>
 <span>Técnicos</span>
+</button>
+
+<button class="mainTab" data-page="escolas-visitas" role="tab" aria-selected="false" aria-controls="page-escolas-visitas">
+<span class="tabIcon">🗓️</span>
+<span>Escolas e Visitas</span>
 </button>
 
 <button class="mainTab" data-page="consolidado" role="tab" aria-selected="false" aria-controls="page-consolidado">
@@ -681,6 +686,44 @@ Importar em massa
 
   </div>
 
+</div>
+
+<!-- PÁGINA ESCOLAS E VISITAS -->
+<div id="page-escolas-visitas" style="display:none" role="tabpanel" aria-labelledby="escolas-visitas-tab">
+  <div class="wrap">
+    <div class="visitasPageHeader">
+      <div>
+        <h2 class="pageTitle"><span class="titleIcon">🗓️</span> Acompanhamento de Visitas</h2>
+        <p class="sistemaSubtitle">Acompanhe a frequência das visitas às escolas, organizadas por técnico responsável.</p>
+      </div>
+      <button id="btnAtualizarPainelVisitas" class="btn btnSecondary">🔄 Atualizar</button>
+    </div>
+    <section class="visitasResumo" id="visitasResumo">
+      <div class="visitaResumoCard"><span>🏫 Escolas vinculadas</span><strong id="visitasTotalEscolas">0</strong></div>
+      <div class="visitaResumoCard"><span>🟢 Em dia</span><strong id="visitasEmDia">0</strong></div>
+      <div class="visitaResumoCard"><span>🟡 Atenção</span><strong id="visitasAtencao">0</strong></div>
+      <div class="visitaResumoCard"><span>🔴 Atrasadas</span><strong id="visitasAtrasadas">0</strong></div>
+    </section>
+    <section class="card cardElevated visitasFiltros">
+      <label class="inputLabel">
+        <span class="labelText">Buscar escola ou técnico</span>
+        <input id="buscaPainelVisitas" type="search" placeholder="Digite o nome da escola, município ou técnico...">
+      </label>
+      <label class="inputLabel">
+        <span class="labelText">Situação da visita</span>
+        <select id="filtroPainelVisitas">
+          <option value="todos">Todas</option>
+          <option value="emdia">Em dia (até 15 dias)</option>
+          <option value="atencao">Atenção (16 a 30 dias)</option>
+          <option value="atrasada">Atrasada (mais de 30 dias)</option>
+          <option value="semregistro">Sem registro de visita</option>
+        </select>
+      </label>
+    </section>
+    <div id="listaPainelVisitas" class="visitasTecnicosLista">
+      <div class="visitasCarregando">Carregando escolas e visitas...</div>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL CADASTRAR/EDITAR ESCOLA TÉCNICO -->

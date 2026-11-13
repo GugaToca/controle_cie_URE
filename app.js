@@ -875,6 +875,9 @@ document.querySelectorAll(".mainTab").forEach(tab=>{
 
     const pageTecnicosEl = document.getElementById("page-tecnicos");
     if(pageTecnicosEl) pageTecnicosEl.style.display = page === "tecnicos" ? "block" : "none";
+    const pageEscolasVisitasEl = document.getElementById("page-escolas-visitas");
+    if(pageEscolasVisitasEl) pageEscolasVisitasEl.style.display = page === "escolas-visitas" ? "block" : "none";
+    if(page === "escolas-visitas") carregarPainelVisitas();
 
     const pageConsolidadoEl = document.getElementById("page-consolidado");
     if(pageConsolidadoEl) pageConsolidadoEl.style.display = page === "consolidado" ? "block" : "none";
@@ -2438,6 +2441,174 @@ async function carregarEscolasDoTecnico(uid, container) {
   }
 }
 
+
+/* ================= PAINEL ESCOLAS E VISITAS ================= */
+
+function obterUltimaDataAtendimento(atendimentos) {
+  if (!Array.isArray(atendimentos) || !atendimentos.length) return "";
+  const datas = atendimentos
+    .map(item => item?.data || "")
+    .filter(data => /^\d{4}-\d{2}-\d{2}$/.test(data))
+    .sort();
+  return datas.length ? datas[datas.length - 1] : "";
+}
+
+function calcularDiasSemVisita(data) {
+  if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return null;
+  const [ano, mes, dia] = data.split("-").map(Number);
+  const ultima = new Date(ano, mes - 1, dia);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  ultima.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.floor((hoje - ultima) / 86400000));
+}
+
+function classificarVisita(dias) {
+  if (dias === null) return { chave: "semregistro", classe: "visitaSemRegistro", texto: "Sem registro" };
+  if (dias <= 15) return { chave: "emdia", classe: "visitaEmDia", texto: "Em dia" };
+  if (dias <= 30) return { chave: "atencao", classe: "visitaAtencao", texto: "Atenção" };
+  return { chave: "atrasada", classe: "visitaAtrasada", texto: "Visita atrasada" };
+}
+
+function formatarDataVisita(data) {
+  if (!data) return "Nunca registrada";
+  const [ano, mes, dia] = data.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+let painelVisitasDados = [];
+
+async function carregarPainelVisitas() {
+  const lista = $("listaPainelVisitas");
+  if (!lista) return;
+  lista.innerHTML = '<div class="visitasCarregando">Carregando escolas e visitas...</div>';
+  try {
+    // escolas_tecnicos é a fonte oficial dos vínculos de distribuição.
+    // tecnicos_escolas fornece o histórico operacional de atendimentos, associado pelo CIE.
+    const [vinculosSnap, atendimentosSnap] = await Promise.all([
+      getDocs(collection(db, "escolas_tecnicos")),
+      getDocs(collection(db, "tecnicos_escolas"))
+    ]);
+    const atendimentosPorCie = new Map();
+    atendimentosSnap.forEach(reg => {
+      const item = { id: reg.id, ...reg.data() };
+      if (!item.cie) return;
+      if (!atendimentosPorCie.has(item.cie)) atendimentosPorCie.set(item.cie, []);
+      atendimentosPorCie.get(item.cie).push(item);
+    });
+    painelVisitasDados = [];
+    vinculosSnap.forEach(reg => {
+      const vinculo = { id: reg.id, ...reg.data() };
+      const tarefas = atendimentosPorCie.get(vinculo.cie) || [];
+      const datasHistorico = tarefas.flatMap(t => (Array.isArray(t.atendimentos) ? t.atendimentos : []));
+      const ultimaHistorico = obterUltimaDataAtendimento(datasHistorico);
+      const ultima = vinculo.ultimaVisita || ultimaHistorico;
+      const dias = calcularDiasSemVisita(ultima);
+      painelVisitasDados.push({
+        ...vinculo, ultimaVisitaCalculada: ultima, diasSemVisita: dias,
+        situacaoVisita: classificarVisita(dias), registrosAtendimento: tarefas
+      });
+    });
+    renderizarPainelVisitas();
+  } catch (err) {
+    console.error("carregarPainelVisitas", err);
+    lista.innerHTML = '<div class="msg err" style="display:block">Não foi possível carregar o acompanhamento de visitas. Verifique as permissões do Firestore.</div>';
+  }
+}
+
+function renderizarPainelVisitas() {
+  const lista = $("listaPainelVisitas");
+  if (!lista) return;
+  const termo = ($("buscaPainelVisitas")?.value || "").trim().toLocaleLowerCase("pt-BR");
+  const filtro = $("filtroPainelVisitas")?.value || "todos";
+
+  const total = painelVisitasDados.length;
+  const emDia = painelVisitasDados.filter(e => e.situacaoVisita.chave === "emdia").length;
+  const atencao = painelVisitasDados.filter(e => e.situacaoVisita.chave === "atencao").length;
+  const atrasadas = painelVisitasDados.filter(e => e.situacaoVisita.chave === "atrasada").length;
+  if ($("visitasTotalEscolas")) $("visitasTotalEscolas").textContent = total;
+  if ($("visitasEmDia")) $("visitasEmDia").textContent = emDia;
+  if ($("visitasAtencao")) $("visitasAtencao").textContent = atencao;
+  if ($("visitasAtrasadas")) $("visitasAtrasadas").textContent = atrasadas;
+
+  let filtradas = painelVisitasDados.filter(e => {
+    const nomeTecnico = listaTecnicosCache.find(t => t.uid === e.tecnicoUid)?.nome || e.tecnicoNome || "Técnico não identificado";
+    const texto = `${e.escolaNome || ""} ${e.cie || ""} ${nomeTecnico} ${e.municipio || ""}`.toLocaleLowerCase("pt-BR");
+    return (!termo || texto.includes(termo)) &&
+      (filtro === "todos" || e.situacaoVisita.chave === filtro);
+  });
+
+  if (!filtradas.length) {
+    lista.innerHTML = '<div class="visitasVazio">Nenhuma escola corresponde aos filtros selecionados.</div>';
+    return;
+  }
+
+  const grupos = new Map();
+  filtradas.forEach(e => {
+    const tecnico = listaTecnicosCache.find(t => t.uid === e.tecnicoUid);
+    const nome = tecnico?.nome || e.tecnicoNome || "Técnico não identificado";
+    if (!grupos.has(e.tecnicoUid || "sem-tecnico")) grupos.set(e.tecnicoUid || "sem-tecnico", { nome, escolas: [] });
+    grupos.get(e.tecnicoUid || "sem-tecnico").escolas.push(e);
+  });
+
+  const gruposOrdenados = [...grupos.values()].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  lista.innerHTML = gruposOrdenados.map(grupo => {
+    grupo.escolas.sort((a,b) => {
+      if (a.diasSemVisita === null && b.diasSemVisita !== null) return 1;
+      if (b.diasSemVisita === null && a.diasSemVisita !== null) return -1;
+      return (b.diasSemVisita ?? 0) - (a.diasSemVisita ?? 0) ||
+        (a.escolaNome || "").localeCompare(b.escolaNome || "", "pt-BR");
+    });
+    const itens = grupo.escolas.map(e => {
+      const sit = e.situacaoVisita;
+      const podeEditarVisita = isAdministrador() || e.tecnicoUid === currentUid();
+      const diasTexto = e.diasSemVisita === null ? "Sem histórico" :
+        e.diasSemVisita === 0 ? "Visitada hoje" :
+        `${e.diasSemVisita} ${e.diasSemVisita === 1 ? "dia" : "dias"} sem visita`;
+      return `
+        <article class="visitaEscolaItem ${sit.classe}">
+          <div class="visitaEscolaPrincipal">
+            <strong>${escapeHtml(e.escolaNome || "Escola sem nome")}</strong>
+            <span class="visitaEscolaMeta">CIE ${escapeHtml(e.cie || "—")}${e.municipio ? ` • ${escapeHtml(e.municipio)}` : ""}</span>
+          </div>
+          <div class="visitaEscolaDatas">
+            <span class="visitaStatusPill">${sit.texto}</span>
+            <strong>${diasTexto}</strong>
+            <small>Última visita: ${formatarDataVisita(e.ultimaVisitaCalculada)}</small>
+            ${podeEditarVisita ? `<label class="visitaEditarData"><span>Editar última visita</span><input type="date" class="inputDataUltimaVisita" data-id="${escapeHtml(e.id)}" value="${escapeHtml(e.ultimaVisitaCalculada || "")}"></label>
+            <button type="button" class="btn btnSmall btnSalvarUltimaVisita" data-id="${escapeHtml(e.id)}">Salvar data</button>` : ""}
+          </div>
+        </article>`;
+    }).join("");
+    return `
+      <section class="visitaGrupoTecnico">
+        <header><div><span class="visitaAvatar">${escapeHtml(grupo.nome.split(/\s+/).map(p=>p[0]).slice(0,2).join("").toUpperCase())}</span><h3>${escapeHtml(grupo.nome)}</h3></div><span>${grupo.escolas.length} ${grupo.escolas.length === 1 ? "escola" : "escolas"}</span></header>
+        <div class="visitaGrupoItens">${itens}</div>
+      </section>`;
+  }).join("");
+
+  lista.querySelectorAll(".btnSalvarUltimaVisita").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const input = lista.querySelector(`.inputDataUltimaVisita[data-id="${btn.dataset.id}"]`);
+      const data = input?.value || null;
+      try {
+        await setDoc(doc(db, "escolas_tecnicos", btn.dataset.id), {
+          ultimaVisita: data, ultimaVisitaAtualizadaEm: Date.now(),
+          ultimaVisitaAtualizadaPor: currentUid()
+        }, { merge: true });
+        await carregarPainelVisitas();
+      } catch (err) {
+        console.error("Salvar última visita", err);
+        alert("Não foi possível salvar a data da última visita.");
+      }
+    });
+  });
+}
+
+$("buscaPainelVisitas")?.addEventListener("input", renderizarPainelVisitas);
+$("filtroPainelVisitas")?.addEventListener("change", renderizarPainelVisitas);
+$("btnAtualizarPainelVisitas")?.addEventListener("click", carregarPainelVisitas);
+
 // Função auxiliar para carregar escolas no select
 async function carregarEscolasSelect() {
   if (!escolaTecnicoSelect) return;
@@ -2511,8 +2682,7 @@ formEscolaTecnico?.addEventListener('submit', async (e) => {
     observacoes: obs,
     tecnicoUid: tecnicoUidDestino,
     tecnicoNome: tecnicoNomeDestino,
-    dataAtualizacao: Date.now(),
-    atendimentos: []
+    dataAtualizacao: Date.now()
   };
   
   if (!editandoEscolaTecnicoId) {
@@ -2521,8 +2691,16 @@ formEscolaTecnico?.addEventListener('submit', async (e) => {
   
   try {
     if (editandoEscolaTecnicoId) {
+      const registroAtual = await getDoc(doc(db, "tecnicos_escolas", editandoEscolaTecnicoId));
+      if (registroAtual.exists()) {
+        const anterior = registroAtual.data();
+        // A edição dos dados da escola não pode apagar o histórico de atendimentos.
+        dados.atendimentos = Array.isArray(anterior.atendimentos) ? anterior.atendimentos : [];
+        if (!dados.ultimaVisita) dados.ultimaVisita = anterior.ultimaVisita || null;
+      }
       await setDoc(doc(db, "tecnicos_escolas", editandoEscolaTecnicoId), dados, { merge: true });
     } else {
+      dados.atendimentos = [];
       await addDoc(collection(db, "tecnicos_escolas"), dados);
     }
     
@@ -2648,7 +2826,8 @@ formAtendimento?.addEventListener('submit', async (e) => {
     
     // Se marcou como concluído, atualiza o status da escola
     const updates = { 
-      atendimentos, 
+      atendimentos,
+      ultimaVisita: (escolaData.ultimaVisita && escolaData.ultimaVisita > data) ? escolaData.ultimaVisita : data,
       dataAtualizacao: Date.now() 
     };
     if (concluido) {
@@ -2656,6 +2835,17 @@ formAtendimento?.addEventListener('submit', async (e) => {
     }
     
     await setDoc(escolaRef, updates, { merge: true });
+
+    const vinculosDaEscola = await getDocs(query(
+      collection(db, "escolas_tecnicos"),
+      where("cie", "==", escolaData.cie)
+    ));
+    await Promise.all(vinculosDaEscola.docs.map(v =>
+      setDoc(doc(db, "escolas_tecnicos", v.id), {
+        ultimaVisita: (v.data()?.ultimaVisita && v.data().ultimaVisita > data) ? v.data().ultimaVisita : data,
+        ultimaVisitaAtualizadaEm: Date.now()
+      }, { merge: true })
+    ));
     
     if (modalAtendimento) modalAtendimento.style.display = 'none';
     
@@ -2667,6 +2857,8 @@ formAtendimento?.addEventListener('submit', async (e) => {
     
     // Reabrir detalhes com dados atualizados
     await abrirDetalhesEscola(escolaTecnicoAtualId);
+    const painelVisitas = document.getElementById("page-escolas-visitas");
+    if (painelVisitas && painelVisitas.style.display !== "none") await carregarPainelVisitas();
   } catch (err) {
     console.error(err);
     setMsg(atendimentoFormMsg, 'Erro ao salvar atendimento', 'err');
