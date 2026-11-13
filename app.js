@@ -2464,9 +2464,10 @@ function calcularDiasSemVisita(data) {
 }
 
 function classificarVisita(dias) {
-  if (dias === null) return { chave: "semregistro", classe: "visitaSemRegistro", texto: "Sem registro" };
-  if (dias <= 15) return { chave: "emdia", classe: "visitaEmDia", texto: "Em dia" };
-  if (dias <= 30) return { chave: "atencao", classe: "visitaAtencao", texto: "Atenção" };
+  if (dias === null) return { chave: "semregistro", classe: "visitaSemRegistro", texto: "Cadastrar visita" };
+  if (dias <= 5) return { chave: "emdia", classe: "visitaEmDia", texto: "Em dia" };
+  if (dias <= 10) return { chave: "atencao", classe: "visitaAtencao", texto: "Atenção" };
+  if (dias <= 13) return { chave: "roxo", classe: "visitaRoxo", texto: "Programar visita" };
   return { chave: "atrasada", classe: "visitaAtrasada", texto: "Visita atrasada" };
 }
 
@@ -2477,36 +2478,51 @@ function formatarDataVisita(data) {
 }
 
 let painelVisitasDados = [];
+let modoVisualizacaoVisitas = "tudo";
+let vinculoDataVisitaAtual = null;
 
 async function carregarPainelVisitas() {
   const lista = $("listaPainelVisitas");
   if (!lista) return;
   lista.innerHTML = '<div class="visitasCarregando">Carregando escolas e visitas...</div>';
   try {
-    // escolas_tecnicos é a fonte oficial dos vínculos de distribuição.
-    // tecnicos_escolas fornece o histórico operacional de atendimentos, associado pelo CIE.
     const [vinculosSnap, atendimentosSnap] = await Promise.all([
       getDocs(collection(db, "escolas_tecnicos")),
       getDocs(collection(db, "tecnicos_escolas"))
     ]);
-    const atendimentosPorCie = new Map();
+
+    const registrosOperacionaisPorCieTecnico = new Map();
     atendimentosSnap.forEach(reg => {
       const item = { id: reg.id, ...reg.data() };
       if (!item.cie) return;
-      if (!atendimentosPorCie.has(item.cie)) atendimentosPorCie.set(item.cie, []);
-      atendimentosPorCie.get(item.cie).push(item);
+      const chave = `${item.cie}::${item.tecnicoUid || ""}`;
+      if (!registrosOperacionaisPorCieTecnico.has(chave)) {
+        registrosOperacionaisPorCieTecnico.set(chave, []);
+      }
+      registrosOperacionaisPorCieTecnico.get(chave).push(item);
     });
+
     painelVisitasDados = [];
     vinculosSnap.forEach(reg => {
       const vinculo = { id: reg.id, ...reg.data() };
-      const tarefas = atendimentosPorCie.get(vinculo.cie) || [];
-      const datasHistorico = tarefas.flatMap(t => (Array.isArray(t.atendimentos) ? t.atendimentos : []));
-      const ultimaHistorico = obterUltimaDataAtendimento(datasHistorico);
-      const ultima = vinculo.ultimaVisita || ultimaHistorico;
+      const chave = `${vinculo.cie}::${vinculo.tecnicoUid || ""}`;
+      const registros = registrosOperacionaisPorCieTecnico.get(chave) || [];
+      const registroOperacional = [...registros].sort((a, b) =>
+        (b.dataAtualizacao || b.dataCriacao || 0) - (a.dataAtualizacao || a.dataCriacao || 0)
+      )[0] || null;
+
+      // A data inicial é a data cadastrada explicitamente no vínculo.
+      // Não importamos atendimentos antigos automaticamente: o usuário preencherá a data-base.
+      const ultima = vinculo.ultimaVisita || "";
       const dias = calcularDiasSemVisita(ultima);
+
       painelVisitasDados.push({
-        ...vinculo, ultimaVisitaCalculada: ultima, diasSemVisita: dias,
-        situacaoVisita: classificarVisita(dias), registrosAtendimento: tarefas
+        ...vinculo,
+        registroOperacionalId: registroOperacional?.id || null,
+        ultimaVisitaCalculada: ultima,
+        diasSemVisita: dias,
+        situacaoVisita: classificarVisita(dias),
+        registrosAtendimento: registros
       });
     });
     renderizarPainelVisitas();
@@ -2515,8 +2531,6 @@ async function carregarPainelVisitas() {
     lista.innerHTML = '<div class="msg err" style="display:block">Não foi possível carregar o acompanhamento de visitas. Verifique as permissões do Firestore.</div>';
   }
 }
-
-let modoVisualizacaoVisitas = "tudo";
 
 function nomeAnalistaVisita(e) {
   return listaTecnicosCache.find(t => t.uid === e.tecnicoUid)?.nome ||
@@ -2534,29 +2548,32 @@ function montarTabelaVisitas(escolas, tituloGrupo = "") {
   const linhas = [...escolas].sort(ordenarEscolasVisitas).map(e => {
     const sit = e.situacaoVisita;
     const analista = nomeAnalistaVisita(e);
-    const podeEditar = isAdministrador() || e.tecnicoUid === currentUid();
-    const dias = e.diasSemVisita === null ? "Sem registro" :
+    const podeGerenciar = isAdministrador() || e.tecnicoUid === currentUid();
+    const dias = e.diasSemVisita === null ? "Cadastrar visita" :
       e.diasSemVisita === 0 ? "0 dias" :
       `${e.diasSemVisita} ${e.diasSemVisita === 1 ? "dia" : "dias"}`;
     const ultima = e.ultimaVisitaCalculada || "";
+    const cie = escapeHtml(e.cie || "");
+    const id = escapeHtml(e.id);
+
     return `
       <tr class="linhaVisita ${sit.classe}">
-        <td class="colEscola"><strong>${escapeHtml(e.escolaNome || "Escola sem nome")}</strong><small>CIE ${escapeHtml(e.cie || "—")}</small></td>
+        <td class="colEscola"><strong>${escapeHtml(e.escolaNome || "Escola sem nome")}</strong></td>
         <td>${escapeHtml(e.municipio || "—")}</td>
         <td>${escapeHtml(e.ure || e.ureNome || "URE Rio Preto")}</td>
         <td><span class="visitaAnalistaNome">${escapeHtml(analista)}</span></td>
         <td class="colPeriodo">
-          <span class="visitaPeriodoPill">${escapeHtml(dias)}</span>
+          <span class="visitaPeriodoPill"><span class="visitaIndicador" aria-hidden="true"></span>${escapeHtml(dias)}</span>
           <small class="visitaResponsavelPeriodo">por ${escapeHtml(analista)}</small>
-          <small class="visitaDataResumo">Última visita: ${formatarDataVisita(ultima)}</small>
+          <small class="visitaDataResumo">${ultima ? `Última visita: ${formatarDataVisita(ultima)}` : "Data ainda não cadastrada"}</small>
         </td>
         <td class="colAcaoVisita">
-          ${podeEditar ? `
-            <div class="visitaAcoesLinha">
-              <input type="date" class="inputDataUltimaVisita" data-id="${escapeHtml(e.id)}"
-                value="${escapeHtml(ultima)}" aria-label="Data da última visita de ${escapeHtml(e.escolaNome || "escola")}">
-              <button type="button" class="btn btnSmall btnSalvarUltimaVisita" data-id="${escapeHtml(e.id)}" title="Salvar data">Salvar</button>
-            </div>` : '<span class="visitaSomenteLeitura">Somente consulta</span>'}
+          <div class="visitaAcoesLinha">
+            <button type="button" class="visitaAcaoBtn visitaAcaoVer btnVerVisita" data-id="${id}" data-cie="${cie}" title="Ver detalhes" aria-label="Ver detalhes">🔍</button>
+            <button type="button" class="visitaAcaoBtn visitaAcaoHistorico btnHistoricoVisita" data-cie="${cie}" title="Histórico da escola" aria-label="Histórico da escola">🗓️</button>
+            <button type="button" class="visitaAcaoBtn visitaAcaoEditar btnEditarDataVisita" data-id="${id}" title="Editar última visita" aria-label="Editar última visita" ${podeGerenciar ? "" : "disabled"}>✏️</button>
+            <button type="button" class="visitaAcaoBtn visitaAcaoExcluir btnExcluirVinculoVisita" data-id="${id}" title="Remover vínculo do técnico" aria-label="Remover vínculo do técnico" ${podeGerenciar ? "" : "disabled"}>🗑️</button>
+          </div>
         </td>
       </tr>`;
   }).join("");
@@ -2585,11 +2602,14 @@ function renderizarPainelVisitas() {
   const total = painelVisitasDados.length;
   const emDia = painelVisitasDados.filter(e => e.situacaoVisita.chave === "emdia").length;
   const atencao = painelVisitasDados.filter(e => e.situacaoVisita.chave === "atencao").length;
+  const roxas = painelVisitasDados.filter(e => e.situacaoVisita.chave === "roxo").length;
   const atrasadas = painelVisitasDados.filter(e => e.situacaoVisita.chave === "atrasada").length;
+
   if ($("visitasTotalEscolas")) $("visitasTotalEscolas").textContent = total;
   if ($("visitasEmDia")) $("visitasEmDia").textContent = emDia;
   if ($("visitasAtencao")) $("visitasAtencao").textContent = atencao;
   if ($("visitasAtrasadas")) $("visitasAtrasadas").textContent = atrasadas;
+  if ($("visitasRoxo")) $("visitasRoxo").textContent = roxas;
 
   const filtradas = painelVisitasDados.filter(e => {
     const analista = nomeAnalistaVisita(e);
@@ -2620,26 +2640,104 @@ function renderizarPainelVisitas() {
       .join("");
   }
 
-  lista.querySelectorAll(".btnSalvarUltimaVisita").forEach(btn => {
+  lista.querySelectorAll(".btnVerVisita").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const input = lista.querySelector(`.inputDataUltimaVisita[data-id="${btn.dataset.id}"]`);
-      const data = input?.value || null;
-      try {
-        btn.disabled = true;
-        btn.textContent = "Salvando...";
-        await setDoc(doc(db, "escolas_tecnicos", btn.dataset.id), {
-          ultimaVisita: data, ultimaVisitaAtualizadaEm: Date.now(),
-          ultimaVisitaAtualizadaPor: currentUid()
-        }, { merge: true });
-        await carregarPainelVisitas();
-      } catch (err) {
-        console.error("Salvar última visita", err);
-        alert("Não foi possível salvar a data da última visita.");
-        btn.disabled = false;
-        btn.textContent = "Salvar";
+      const item = painelVisitasDados.find(e => e.id === btn.dataset.id);
+      if (item?.registroOperacionalId) {
+        await abrirDetalhesEscola(item.registroOperacionalId);
+      } else {
+        await openHistorico(btn.dataset.cie);
       }
     });
   });
+
+  lista.querySelectorAll(".btnHistoricoVisita").forEach(btn => {
+    btn.addEventListener("click", () => openHistorico(btn.dataset.cie));
+  });
+
+  lista.querySelectorAll(".btnEditarDataVisita").forEach(btn => {
+    btn.addEventListener("click", () => abrirEdicaoDataVisita(btn.dataset.id));
+  });
+
+  lista.querySelectorAll(".btnExcluirVinculoVisita").forEach(btn => {
+    btn.addEventListener("click", () => excluirVinculoPainelVisitas(btn.dataset.id));
+  });
+}
+
+function abrirEdicaoDataVisita(id) {
+  const item = painelVisitasDados.find(e => e.id === id);
+  if (!item) return;
+  vinculoDataVisitaAtual = item;
+  const modal = $("modalEditarDataVisita");
+  const nome = $("nomeEscolaDataVisita");
+  const input = $("dataUltimaVisitaPainel");
+  if (nome) nome.textContent = `${item.escolaNome || "Escola"} • ${nomeAnalistaVisita(item)}`;
+  if (input) {
+    input.value = item.ultimaVisitaCalculada || "";
+    input.max = new Date().toISOString().slice(0, 10);
+  }
+  setMsg($("msgDataUltimaVisita"), "", "");
+  if (modal) modal.style.display = "flex";
+}
+
+async function salvarEdicaoDataVisita() {
+  if (!vinculoDataVisitaAtual) return;
+  const input = $("dataUltimaVisitaPainel");
+  const data = input?.value || "";
+  const hoje = new Date().toISOString().slice(0, 10);
+  if (!data) {
+    setMsg($("msgDataUltimaVisita"), "Informe a data da última visita.", "err");
+    return;
+  }
+  if (data > hoje) {
+    setMsg($("msgDataUltimaVisita"), "A data da visita não pode ser futura.", "err");
+    return;
+  }
+
+  const btn = $("btnSalvarDataVisita");
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = "Salvando..."; }
+    await setDoc(doc(db, "escolas_tecnicos", vinculoDataVisitaAtual.id), {
+      ultimaVisita: data,
+      ultimaVisitaAtualizadaEm: Date.now(),
+      ultimaVisitaAtualizadaPor: currentUid()
+    }, { merge: true });
+
+    // Mantém o registro operacional alinhado, quando houver um correspondente.
+    if (vinculoDataVisitaAtual.registroOperacionalId) {
+      await setDoc(doc(db, "tecnicos_escolas", vinculoDataVisitaAtual.registroOperacionalId), {
+        ultimaVisita: data,
+        dataAtualizacao: Date.now()
+      }, { merge: true });
+    }
+
+    const modal = $("modalEditarDataVisita");
+    if (modal) modal.style.display = "none";
+    await carregarPainelVisitas();
+  } catch (err) {
+    console.error("Salvar última visita", err);
+    setMsg($("msgDataUltimaVisita"), "Não foi possível salvar. Verifique as permissões.", "err");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "💾 Salvar data"; }
+  }
+}
+
+async function excluirVinculoPainelVisitas(id) {
+  const item = painelVisitasDados.find(e => e.id === id);
+  if (!item) return;
+  if (!(isAdministrador() || item.tecnicoUid === currentUid())) {
+    alert("Você não tem permissão para remover este vínculo.");
+    return;
+  }
+  const nome = item.escolaNome || "esta escola";
+  if (!confirm(`Remover ${nome} da carteira de ${nomeAnalistaVisita(item)}? O histórico de atendimentos não será apagado.`)) return;
+  try {
+    await deleteDoc(doc(db, "escolas_tecnicos", id));
+    await carregarPainelVisitas();
+  } catch (err) {
+    console.error("Excluir vínculo da escola", err);
+    alert("Não foi possível remover o vínculo. Verifique as permissões do Firestore.");
+  }
 }
 
 function definirModoVisualizacaoVisitas(modo) {
@@ -2662,6 +2760,12 @@ $("btnVisitasAnalistas")?.addEventListener("click", () => definirModoVisualizaca
 $("buscaPainelVisitas")?.addEventListener("input", renderizarPainelVisitas);
 $("filtroPainelVisitas")?.addEventListener("change", renderizarPainelVisitas);
 $("btnAtualizarPainelVisitas")?.addEventListener("click", carregarPainelVisitas);
+$("btnFecharDataVisita")?.addEventListener("click", () => { $("modalEditarDataVisita").style.display = "none"; });
+$("btnCancelarDataVisita")?.addEventListener("click", () => { $("modalEditarDataVisita").style.display = "none"; });
+$("btnSalvarDataVisita")?.addEventListener("click", salvarEdicaoDataVisita);
+$("modalEditarDataVisita")?.addEventListener("click", e => {
+  if (e.target.id === "modalEditarDataVisita") e.currentTarget.style.display = "none";
+});
 
 // Função auxiliar para carregar escolas no select
 async function carregarEscolasSelect() {

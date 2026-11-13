@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261113-visitas01"/>
+<link rel="stylesheet" href="styles.css?v=20261113-visitas03"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
@@ -701,8 +701,9 @@ Importar em massa
     <section class="visitasResumo" id="visitasResumo">
       <div class="visitaResumoCard"><span>🏫 Escolas vinculadas</span><strong id="visitasTotalEscolas">0</strong></div>
       <div class="visitaResumoCard"><span>🟢 Em dia</span><strong id="visitasEmDia">0</strong></div>
-      <div class="visitaResumoCard"><span>🟡 Atenção</span><strong id="visitasAtencao">0</strong></div>
-      <div class="visitaResumoCard"><span>🔴 Atrasadas</span><strong id="visitasAtrasadas">0</strong></div>
+      <div class="visitaResumoCard"><span>🟡 Amarelo</span><strong id="visitasAtencao">0</strong></div>
+      <div class="visitaResumoCard"><span>🟣 Roxo</span><strong id="visitasRoxo">0</strong></div>
+      <div class="visitaResumoCard"><span>🔴 Vermelho</span><strong id="visitasAtrasadas">0</strong></div>
     </section>
     <section class="card cardElevated visitasFiltros">
       <label class="inputLabel">
@@ -712,11 +713,12 @@ Importar em massa
       <label class="inputLabel">
         <span class="labelText">Situação da visita</span>
         <select id="filtroPainelVisitas">
-          <option value="todos">Todas</option>
-          <option value="emdia">Em dia (até 15 dias)</option>
-          <option value="atencao">Atenção (16 a 30 dias)</option>
-          <option value="atrasada">Atrasada (mais de 30 dias)</option>
-          <option value="semregistro">Sem registro de visita</option>
+          <option value="todos">Todas as situações</option>
+          <option value="emdia">Verde (0 a 5 dias)</option>
+          <option value="atencao">Amarelo (6 a 10 dias)</option>
+          <option value="roxo">Roxo (11 a 13 dias)</option>
+          <option value="atrasada">Vermelho (14 dias ou mais)</option>
+          <option value="semregistro">Sem data cadastrada</option>
         </select>
       </label>
       <div class="visitasModoVisualizacao">
@@ -729,6 +731,31 @@ Importar em massa
     </section>
     <div id="listaPainelVisitas" class="visitasTecnicosLista">
       <div class="visitasCarregando">Carregando escolas e visitas...</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL DATA DA ÚLTIMA VISITA -->
+<div id="modalEditarDataVisita" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEditarDataVisitaTitulo" style="display:none">
+  <div class="modalContent" style="max-width:440px">
+    <div class="modalHeader">
+      <h3 id="modalEditarDataVisitaTitulo" class="modalTitle">📅 Última visita</h3>
+      <button type="button" id="btnFecharDataVisita" class="btnCloseModal" aria-label="Fechar">✕</button>
+    </div>
+    <div class="form">
+      <p id="nomeEscolaDataVisita" class="sectionSubtitle"></p>
+      <div class="formGroup">
+        <label class="inputLabel" for="dataUltimaVisitaPainel">
+          <span class="labelText">Data da última visita realizada</span>
+          <input id="dataUltimaVisitaPainel" type="date" required>
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="btnSalvarDataVisita" class="btn primary btnLarge">💾 Salvar data</button>
+        <button type="button" id="btnCancelarDataVisita" class="btn btnSecondary">Cancelar</button>
+      </div>
+      <div id="msgDataUltimaVisita" class="msg" role="status" aria-live="polite"></div>
     </div>
   </div>
 </div>
@@ -1693,7 +1720,7 @@ function memVictory(){
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
-<script type="module" src="app.js?v=20260902-consolidado03"></script>
+<script type="module" src="app.js?v=20261113-visitas03"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>

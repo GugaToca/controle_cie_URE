@@ -1,0 +1,23 @@
+SEINTEC - Escolas e Visitas v3
+
+Mudanças desta versão:
+- Tabela compacta no formato da referência enviada: Escola, Município, URE, Analista, Dias s/ Visita e Ações.
+- Alternância entre Todas as escolas e Por analista preservada.
+- Ações com ícones: detalhes, histórico, editar data da última visita e remover vínculo.
+- Edição da última visita em modal próprio, com validação para impedir data futura.
+- Faixas: verde 0-5 dias; amarelo 6-10 dias; roxo piscante 11-13 dias; vermelho piscante a partir de 14 dias.
+- Escolas sem data cadastrada aparecem como "Cadastrar visita".
+- A data-base não é preenchida automaticamente com atendimentos antigos. Ela usa o campo ultimaVisita no vínculo escolas_tecnicos.
+- Novo atendimento continua atualizando ultimaVisita automaticamente nos vínculos.
+- Cache do PWA atualizado para ure-v19.
+
+Instalação:
+1. Faça backup da versão publicada.
+2. Substitua os arquivos do pacote mantendo a estrutura.
+3. Publique no hosting.
+4. Faça hard refresh no navegador (Ctrl+F5) ou feche e reabra o PWA.
+5. Teste primeiro com uma escola de homologação e confirme as permissões Firestore.
+
+Observação:
+A exclusão remove apenas o vínculo da escola com o técnico em escolas_tecnicos; não apaga os dados históricos em tecnicos_escolas.
+A validação local não substitui teste no Firebase de produção.
