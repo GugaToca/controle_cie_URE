@@ -1905,7 +1905,7 @@ async function carregarListaTecnicosCache() {
     listaTecnicosCache = [];
     snap.forEach(d => {
       const usuario = d.data();
-      if (usuario.perfil !== "administrador") listaTecnicosCache.push(usuario);
+      if (usuario.perfil !== "administrador") listaTecnicosCache.push({ ...usuario, uid: d.id });
     });
     listaTecnicosCache.sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email));
     
@@ -2541,6 +2541,13 @@ function nomeAnalistaVisita(e) {
     e.tecnicoNome || "Técnico não identificado";
 }
 
+// Quem executou o atendimento é independente do técnico dono da carteira.
+function nomeTecnicoAtendimentoVisita(e) {
+  return e.tecnicoAtendimentoNome ||
+    listaTecnicosCache.find(t => t.uid === e.tecnicoAtendimentoUid)?.nome ||
+    nomeAnalistaVisita(e);
+}
+
 function ordenarEscolasVisitas(a, b) {
   if (a.diasSemVisita === null && b.diasSemVisita !== null) return 1;
   if (b.diasSemVisita === null && a.diasSemVisita !== null) return -1;
@@ -2552,7 +2559,9 @@ function montarTabelaVisitas(escolas, tituloGrupo = "") {
   const linhas = [...escolas].sort(ordenarEscolasVisitas).map(e => {
     const sit = e.situacaoVisita;
     const analista = nomeAnalistaVisita(e);
+    const tecnicoAtendimento = nomeTecnicoAtendimentoVisita(e);
     const podeGerenciar = isAdministrador() || e.tecnicoUid === currentUid();
+    const podeRegistrarAtendimento = !!currentUid();
     const dias = e.diasSemVisita === null ? "Cadastrar visita" :
       e.diasSemVisita === 0 ? "0 dias" :
       `${e.diasSemVisita} ${e.diasSemVisita === 1 ? "dia" : "dias"}`;
@@ -2568,14 +2577,14 @@ function montarTabelaVisitas(escolas, tituloGrupo = "") {
         <td><span class="visitaAnalistaNome">${escapeHtml(analista)}</span></td>
         <td class="colPeriodo">
           <span class="visitaPeriodoPill"><span class="visitaIndicador" aria-hidden="true"></span>${escapeHtml(dias)}</span>
-          <small class="visitaResponsavelPeriodo">por ${escapeHtml(analista)}</small>
+          <small class="visitaResponsavelPeriodo">por ${escapeHtml(tecnicoAtendimento)}</small>
           <small class="visitaDataResumo">${ultima ? `Última visita: ${formatarDataVisita(ultima)}` : "Data ainda não cadastrada"}</small>
         </td>
         <td class="colAcaoVisita">
           <div class="visitaAcoesLinha">
             <button type="button" class="visitaAcaoBtn visitaAcaoVer btnVerVisita" data-id="${id}" data-cie="${cie}" title="Ver detalhes" aria-label="Ver detalhes">🔍</button>
             <button type="button" class="visitaAcaoBtn visitaAcaoHistorico btnHistoricoVisita" data-cie="${cie}" title="Histórico da escola" aria-label="Histórico da escola">🗓️</button>
-            <button type="button" class="visitaAcaoBtn visitaAcaoEditar btnEditarDataVisita" data-id="${id}" title="Editar última visita" aria-label="Editar última visita" ${podeGerenciar ? "" : "disabled"}>✏️</button>
+            <button type="button" class="visitaAcaoBtn visitaAcaoEditar btnEditarDataVisita" data-id="${id}" title="Editar última visita" aria-label="Editar última visita" ${podeRegistrarAtendimento ? "" : "disabled"}>✏️</button>
             <button type="button" class="visitaAcaoBtn visitaAcaoExcluir btnExcluirVinculoVisita" data-id="${id}" title="Remover vínculo do técnico" aria-label="Remover vínculo do técnico" ${podeGerenciar ? "" : "disabled"}>🗑️</button>
           </div>
         </td>
@@ -2675,10 +2684,20 @@ function abrirEdicaoDataVisita(id) {
   const modal = $("modalEditarDataVisita");
   const nome = $("nomeEscolaDataVisita");
   const input = $("dataUltimaVisitaPainel");
-  if (nome) nome.textContent = `${item.escolaNome || "Escola"} • ${nomeAnalistaVisita(item)}`;
+  const tecnicoSelect = $("tecnicoAtendimentoVisitaPainel");
+  if (nome) nome.textContent = `${item.escolaNome || "Escola"} • Carteira de ${nomeAnalistaVisita(item)}`;
   if (input) {
     input.value = item.ultimaVisitaCalculada || "";
     input.max = new Date().toISOString().slice(0, 10);
+  }
+  if (tecnicoSelect) {
+    const tecnicos = [...listaTecnicosCache].sort((a, b) =>
+      (a.nome || a.email || "").localeCompare(b.nome || b.email || "", "pt-BR")
+    );
+    tecnicoSelect.innerHTML = '<option value="">— Selecione quem realizou —</option>' +
+      tecnicos.map(t => `<option value="${escapeHtml(t.uid)}">${escapeHtml(t.nome || t.email || "Técnico")}</option>`).join("");
+    tecnicoSelect.value = item.tecnicoAtendimentoUid ||
+      (tecnicos.some(t => t.uid === currentUid()) ? currentUid() : "");
   }
   setMsg($("msgDataUltimaVisita"), "", "");
   if (modal) modal.style.display = "flex";
@@ -2688,6 +2707,8 @@ async function salvarEdicaoDataVisita() {
   if (!vinculoDataVisitaAtual) return;
   const input = $("dataUltimaVisitaPainel");
   const data = input?.value || "";
+  const tecnicoUid = $("tecnicoAtendimentoVisitaPainel")?.value || "";
+  const tecnicoSelecionado = listaTecnicosCache.find(t => t.uid === tecnicoUid);
   const hoje = new Date().toISOString().slice(0, 10);
   if (!data) {
     setMsg($("msgDataUltimaVisita"), "Informe a data da última visita.", "err");
@@ -2695,6 +2716,10 @@ async function salvarEdicaoDataVisita() {
   }
   if (data > hoje) {
     setMsg($("msgDataUltimaVisita"), "A data da visita não pode ser futura.", "err");
+    return;
+  }
+  if (!tecnicoUid || !tecnicoSelecionado) {
+    setMsg($("msgDataUltimaVisita"), "Selecione o técnico que realizou o atendimento.", "err");
     return;
   }
 
@@ -2706,13 +2731,16 @@ async function salvarEdicaoDataVisita() {
       ultimaVisita: data,
       ultimaVisitaAtualizadaEm: Date.now(),
       ultimaVisitaAtualizadaPor: currentUid(),
+      tecnicoAtendimentoUid: tecnicoUid,
+      tecnicoAtendimentoNome: tecnicoSelecionado.nome || tecnicoSelecionado.email || "Técnico",
       origemUltimaVisita: "edicao_manual"
     }, { merge: true });
 
     // Confirma a persistência no servidor/banco antes de fechar a janela.
     const confirmacao = await getDocFromServer(vinculoRef);
-    if (!confirmacao.exists() || confirmacao.data().ultimaVisita !== data) {
-      throw new Error("A data não foi confirmada no Firestore. Verifique as regras e permissões.");
+    if (!confirmacao.exists() || confirmacao.data().ultimaVisita !== data ||
+        confirmacao.data().tecnicoAtendimentoUid !== tecnicoUid) {
+      throw new Error("A data e o técnico do atendimento não foram confirmados no Firestore. Verifique as regras e permissões.");
     }
 
     // A coleção operacional recebe uma cópia auxiliar; ela não é a fonte oficial.
@@ -2720,6 +2748,8 @@ async function salvarEdicaoDataVisita() {
       try {
         await setDoc(doc(db, "tecnicos_escolas", vinculoDataVisitaAtual.registroOperacionalId), {
           ultimaVisita: data,
+          tecnicoAtendimentoUid: tecnicoUid,
+          tecnicoAtendimentoNome: tecnicoSelecionado.nome || tecnicoSelecionado.email || "Técnico",
           dataAtualizacao: Date.now()
         }, { merge: true });
       } catch (syncError) {
@@ -2729,7 +2759,7 @@ async function salvarEdicaoDataVisita() {
 
     const modal = $("modalEditarDataVisita");
     if (modal) modal.style.display = "none";
-    setMsg($("msgDataUltimaVisita"), "Data salva e confirmada no Firestore.", "ok");
+    setMsg($("msgDataUltimaVisita"), "Atendimento salvo e confirmado no Firestore.", "ok");
     await carregarPainelVisitas();
   } catch (err) {
     console.error("Salvar última visita", err);
@@ -3297,10 +3327,15 @@ formAtendimento?.addEventListener('submit', async (e) => {
       const datasConhecidas = [v.data()?.ultimaVisita, escolaData.ultimaVisita, data]
         .filter(d => /^\\d{4}-\\d{2}-\\d{2}$/.test(d || ""));
       const dataEfetivaAtendimento = datasConhecidas.sort().at(-1) || data;
+      const atendimentoAtualEDataMaisRecente = dataEfetivaAtendimento === data;
       batchVisitas.set(doc(db, "escolas_tecnicos", v.id), {
         ultimaVisita: dataEfetivaAtendimento,
         ultimaVisitaAtualizadaEm: Date.now(),
         ultimaVisitaAtualizadaPor: currentUid(),
+        ...(atendimentoAtualEDataMaisRecente ? {
+          tecnicoAtendimentoUid: currentUid(),
+          tecnicoAtendimentoNome: listaTecnicosCache.find(t => t.uid === currentUid())?.nome || getUserFirstName()
+        } : {}),
         ultimaVisitaTipoAtendimento: tipo || "outro",
         origemUltimaVisita: "atendimento"
       }, { merge: true });

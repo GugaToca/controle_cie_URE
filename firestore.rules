@@ -86,7 +86,19 @@ service cloud.firestore {
       allow update: if request.auth != null &&
                        (get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador" ||
                         (request.auth.uid == resource.data.tecnicoUid &&
-                         request.resource.data.tecnicoUid == resource.data.tecnicoUid));
+                         request.resource.data.tecnicoUid == resource.data.tecnicoUid) ||
+                        // Qualquer técnico autenticado pode registrar quem atendeu e a data,
+                        // sem alterar o técnico dono da carteira nem outros dados do vínculo.
+                        (request.resource.data.tecnicoUid == resource.data.tecnicoUid &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                           "ultimaVisita",
+                           "ultimaVisitaAtualizadaEm",
+                           "ultimaVisitaAtualizadaPor",
+                           "tecnicoAtendimentoUid",
+                           "tecnicoAtendimentoNome",
+                           "ultimaVisitaTipoAtendimento",
+                           "origemUltimaVisita"
+                         ])));
       allow delete: if request.auth != null &&
                        (request.auth.uid == resource.data.tecnicoUid ||
                         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador");

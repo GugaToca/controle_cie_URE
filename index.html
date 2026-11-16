@@ -771,6 +771,15 @@ Importar em massa
           <input id="dataUltimaVisitaPainel" type="date" required>
         </label>
       </div>
+      <div class="formGroup">
+        <label class="inputLabel" for="tecnicoAtendimentoVisitaPainel">
+          <span class="labelText">Técnico que realizou o atendimento *</span>
+          <select id="tecnicoAtendimentoVisitaPainel" required>
+            <option value="">— Selecione quem realizou —</option>
+          </select>
+        </label>
+        <small class="hint">A escola continuará na carteira do técnico responsável. Este campo identifica somente quem realizou o atendimento.</small>
+      </div>
       <div class="actions">
         <button type="button" id="btnSalvarDataVisita" class="btn primary btnLarge">💾 Salvar data</button>
         <button type="button" id="btnCancelarDataVisita" class="btn btnSecondary">Cancelar</button>

@@ -1,31 +1,29 @@
-SEINTEC - Módulo Escolas e Visitas (primeira versão)
+SEINTEC - Escolas e Visitas v21
 
-Conteúdo:
-- index.html
-- app.js
-- styles.css
-- sw.js
-- manifest.json
-- icon.svg
-- masct_ure.png
-- firestore.rules (cópia das regras recebidas; não foi necessário alterá-las)
+ALTERAÇÃO: RESPONSÁVEL PELA CARTEIRA x TÉCNICO QUE REALIZOU O ATENDIMENTO
 
-Implementado:
-1. Nova aba "Escolas e Visitas".
-2. Listagem agrupada pelo técnico responsável, usando escolas_tecnicos como fonte oficial dos vínculos.
-3. Junção do histórico operacional de tecnicos_escolas pelo CIE.
-4. Campo para editar e salvar a última visita em cada vínculo oficial.
-5. Registro de novo atendimento atualiza automaticamente a última visita no vínculo oficial.
-6. Preservação do array de atendimentos ao editar uma escola em tecnicos_escolas. Antes, o formulário podia sobrescrever o histórico com um array vazio.
-7. Indicadores de situação:
-   - Verde: até 15 dias.
-   - Amarelo: de 16 a 30 dias.
-   - Vermelho pulsante: acima de 30 dias.
-   - Cinza: sem registro.
-8. Busca, filtro, resumo e layout responsivo.
-9. Cache do service worker atualizado para ure-v18.
+1. Na edição da última visita, agora é obrigatório selecionar o técnico que efetivamente realizou o atendimento.
+2. A lista de técnicos é carregada da coleção usuarios.
+3. A escola permanece vinculada ao técnico responsável original em escolas_tecnicos.
+4. A coluna Analista continua identificando o responsável pela carteira.
+5. A linha "por [técnico]" abaixo de Dias s/ Visita identifica quem realizou o atendimento.
+6. Atendimentos lançados pelo módulo operacional registram automaticamente o técnico que os lançou como executor.
+7. Usuários autenticados podem registrar a data e o executor em escolas de outras carteiras, sem poder alterar o proprietário do vínculo ou outros campos por essa permissão específica.
+8. A contagem de dias continua vinculada à data oficial ultimaVisita em escolas_tecnicos.
+9. Cache do PWA atualizado para ure-v21.
 
-Observações:
-- Os limites de 15 e 30 dias são valores iniciais e podem ser ajustados.
-- As regras do Firestore não foram modificadas. A gravação da última visita respeita as permissões já existentes: administrador ou técnico responsável pelo vínculo.
-- Faça backup da versão atual antes de substituir os arquivos no repositório/hosting.
+PUBLICAÇÃO OBRIGATÓRIA
+
+1. Faça backup dos arquivos publicados e das regras atuais do Firestore.
+2. Publique TODOS os arquivos deste pacote no hosting, mantendo os nomes e a estrutura.
+3. Publique também firestore.rules no Console Firebase. Sem as novas regras, um técnico comum não conseguirá lançar atendimento em uma escola da carteira de outro técnico.
+4. Faça logout/login e atualize o PWA. Se necessário, feche e abra novamente ou faça Ctrl+F5.
+5. Teste com duas contas de técnico: abra uma escola pertencente à carteira do Técnico A, entre com Técnico B, registre uma data e selecione Técnico B como executor.
+6. Confirme que a escola continua na carteira do Técnico A, que o contador é atualizado nessa carteira e que aparece "por Técnico B" abaixo dos dias.
+7. Teste também com administrador e confirme que ele continua podendo editar qualquer vínculo.
+
+OBSERVAÇÕES
+
+- Os registros antigos sem tecnicoAtendimentoUid/tecnicoAtendimentoNome continuam exibindo o técnico responsável pela carteira como identificação histórica aproximada, até que sejam atualizados manualmente.
+- A importação em massa de datas não foi alterada e não atribui automaticamente um executor.
+- A validação de JavaScript foi executada localmente. A persistência e as permissões precisam ser confirmadas no projeto Firebase real.
