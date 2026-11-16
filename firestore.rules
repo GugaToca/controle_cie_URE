@@ -101,6 +101,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+
+    // Auditoria de importações em massa das últimas visitas
+    match /importacoes_visitas/{id} {
+      allow read, create: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador";
+      allow update, delete: if false;
+    }
+
     // Histórico de remanejamentos, somente para Administrador
     match /remanejamentos/{id} {
       allow read, write: if request.auth != null &&

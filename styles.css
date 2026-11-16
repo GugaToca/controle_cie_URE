@@ -2822,3 +2822,31 @@ body.notificacaoModalOpen { overflow:hidden; }
  #page-escolas-visitas .visitaRoxo .visitaPeriodoPill,
  #page-escolas-visitas .visitaAtrasada .visitaPeriodoPill{animation:none}
 }
+
+
+/* ===== IMPORTAÇÃO EM MASSA DE ÚLTIMAS VISITAS ===== */
+#page-escolas-visitas .visitasImportacaoCard{margin:0 6px 14px;padding:14px;border-radius:9px;box-shadow:none}
+#page-escolas-visitas .visitasImportacaoHeader{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#page-escolas-visitas .visitasImportacaoHeader h3{margin:0 0 3px;font-size:14px;color:var(--text)}
+#page-escolas-visitas .visitasImportacaoHeader p{margin:0;font-size:11px;color:var(--text-secondary)}
+#page-escolas-visitas .visitasImportacaoControles{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+#page-escolas-visitas .visitasArquivoLabel{font-size:12px;font-weight:700}
+#page-escolas-visitas #arquivoImportacaoVisitas{max-width:330px;font-size:12px}
+#page-escolas-visitas .visitasImportacaoAjuda{font-size:11px;color:var(--text-secondary);margin:9px 0 0}
+#page-escolas-visitas .visitasImportacaoResultado{margin-top:8px;font-size:12px}
+#page-escolas-visitas .visitasImportacaoPrevia{margin-top:12px}
+#page-escolas-visitas .visitasImportacaoResumo{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:8px}
+#page-escolas-visitas .importacaoOk{color:#15803d;font-weight:700}
+#page-escolas-visitas .importacaoErro{color:#b91c1c;font-weight:700}
+#page-escolas-visitas .visitasImportacaoTabelaScroll{overflow:auto;max-height:360px;border:1px solid #d8e0e8;border-radius:7px}
+#page-escolas-visitas .visitasImportacaoTabela{width:100%;min-width:700px;border-collapse:collapse;font-size:11px}
+#page-escolas-visitas .visitasImportacaoTabela th{position:sticky;top:0;background:#1e3a5f;color:white;text-align:left;padding:8px}
+#page-escolas-visitas .visitasImportacaoTabela td{padding:7px 8px;border-bottom:1px solid #e2e8f0}
+#page-escolas-visitas .visitasImportacaoTabela .linhaImportacaoErro{background:#fff5f5}
+#page-escolas-visitas .visitasImportacaoTabela .linhaImportacaoOk{background:#f6fcf7}
+@media(max-width:650px){
+ #page-escolas-visitas .visitasImportacaoHeader{align-items:flex-start;flex-direction:column}
+ #page-escolas-visitas .visitasImportacaoControles{align-items:flex-start;flex-direction:column}
+}
+
+#page-escolas-visitas .visitasModeloBotoes{display:flex;gap:7px;flex-wrap:wrap}

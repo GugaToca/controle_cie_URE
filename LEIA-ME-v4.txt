@@ -1,0 +1,45 @@
+SEINTEC - Importação em Massa de Últimas Visitas v4
+
+Arquivos incluídos:
+- index.html
+- app.js
+- styles.css
+- firestore.rules
+- sw.js
+- manifest.json
+- icon.svg
+- masct_ure.png
+
+O que foi implementado:
+1. Importação de datas por Excel (.xlsx/.xls) e CSV.
+2. Modelos de importação CSV e Excel para baixar.
+3. Cabeçalhos esperados: CIE, Técnico (recomendado quando há mais de um vínculo por CIE), Última visita.
+4. Prévia com validação de CIE, técnico, datas futuras, duplicidades e vínculos não encontrados.
+5. Atualização em lote da coleção escolas_tecnicos, que é a fonte oficial de ultimaVisita.
+6. Auditoria em importacoes_visitas com datas anteriores e novas, autor, data e nome do arquivo.
+7. Leitura do vínculo principal diretamente do servidor (getDocsFromServer/getDocFromServer), com confirmação após a gravação.
+8. A atualização do atendimento preserva a data mais recente entre vínculo, registro operacional e atendimento atual, evitando regressão de datas importadas.
+9. Qualquer tipo de atendimento (visita presencial, remoto, telefone ou outro) atualiza a data da última atividade.
+10. Edição manual também verifica a persistência no servidor e apresenta o erro do Firebase quando a gravação falha.
+11. Cache PWA atualizado para ure-v20.
+
+IMPORTANTE:
+- Faça backup antes de publicar.
+- Publique também o arquivo firestore.rules no Console Firebase.
+- A regra nova permite leitura/criação da coleção importacoes_visitas somente para administradores; edição e exclusão de auditoria ficam bloqueadas.
+- O usuário que importa deve ter perfil "administrador" tanto no documento usuarios/{uid} quanto na sessão da aplicação.
+- CIE é o identificador principal. Se o mesmo CIE estiver vinculado a mais de um técnico, a coluna Técnico é obrigatória para identificar o vínculo.
+- O limite por arquivo é 450 linhas para respeitar o limite de operações do WriteBatch.
+- Datas futuras e datas inválidas são rejeitadas.
+- A importação não cria escolas nem vínculos, não altera analistas e não apaga histórico.
+- A contagem reinicia com qualquer tipo de atendimento registrado, conforme solicitado.
+- A validação local de sintaxe não substitui o teste no projeto Firebase real.
+
+PASSOS DE PUBLICAÇÃO:
+1. Backup do site atual e das regras atuais.
+2. Substituir os arquivos do site pelos arquivos deste pacote.
+3. Publicar as novas Firestore Rules.
+4. Publicar o site.
+5. Sair e entrar novamente no sistema e abrir Escolas e Visitas.
+6. Baixar o modelo CSV ou Excel, preencher uma linha de teste e importar.
+7. Confirmar que a data continua igual após F5 e após sair/entrar com outro usuário.

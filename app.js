@@ -1,4 +1,4 @@
-﻿/* ================= FIREBASE ================= */
+/* ================= FIREBASE ================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 
@@ -9,6 +9,8 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocFromServer,
+  getDocsFromServer,
   deleteDoc,
   collection,
   getDocs,
@@ -2484,10 +2486,12 @@ let vinculoDataVisitaAtual = null;
 async function carregarPainelVisitas() {
   const lista = $("listaPainelVisitas");
   if (!lista) return;
+  const painelImportacao = $("painelImportacaoVisitas");
+  if (painelImportacao) painelImportacao.style.display = isAdministrador() ? "" : "none";
   lista.innerHTML = '<div class="visitasCarregando">Carregando escolas e visitas...</div>';
   try {
     const [vinculosSnap, atendimentosSnap] = await Promise.all([
-      getDocs(collection(db, "escolas_tecnicos")),
+      getDocsFromServer(collection(db, "escolas_tecnicos")),
       getDocs(collection(db, "tecnicos_escolas"))
     ]);
 
@@ -2697,26 +2701,39 @@ async function salvarEdicaoDataVisita() {
   const btn = $("btnSalvarDataVisita");
   try {
     if (btn) { btn.disabled = true; btn.textContent = "Salvando..."; }
-    await setDoc(doc(db, "escolas_tecnicos", vinculoDataVisitaAtual.id), {
+    const vinculoRef = doc(db, "escolas_tecnicos", vinculoDataVisitaAtual.id);
+    await setDoc(vinculoRef, {
       ultimaVisita: data,
       ultimaVisitaAtualizadaEm: Date.now(),
-      ultimaVisitaAtualizadaPor: currentUid()
+      ultimaVisitaAtualizadaPor: currentUid(),
+      origemUltimaVisita: "edicao_manual"
     }, { merge: true });
 
-    // Mantém o registro operacional alinhado, quando houver um correspondente.
+    // Confirma a persistência no servidor/banco antes de fechar a janela.
+    const confirmacao = await getDocFromServer(vinculoRef);
+    if (!confirmacao.exists() || confirmacao.data().ultimaVisita !== data) {
+      throw new Error("A data não foi confirmada no Firestore. Verifique as regras e permissões.");
+    }
+
+    // A coleção operacional recebe uma cópia auxiliar; ela não é a fonte oficial.
     if (vinculoDataVisitaAtual.registroOperacionalId) {
-      await setDoc(doc(db, "tecnicos_escolas", vinculoDataVisitaAtual.registroOperacionalId), {
-        ultimaVisita: data,
-        dataAtualizacao: Date.now()
-      }, { merge: true });
+      try {
+        await setDoc(doc(db, "tecnicos_escolas", vinculoDataVisitaAtual.registroOperacionalId), {
+          ultimaVisita: data,
+          dataAtualizacao: Date.now()
+        }, { merge: true });
+      } catch (syncError) {
+        console.warn("Data principal salva; não foi possível atualizar a cópia operacional.", syncError);
+      }
     }
 
     const modal = $("modalEditarDataVisita");
     if (modal) modal.style.display = "none";
+    setMsg($("msgDataUltimaVisita"), "Data salva e confirmada no Firestore.", "ok");
     await carregarPainelVisitas();
   } catch (err) {
     console.error("Salvar última visita", err);
-    setMsg($("msgDataUltimaVisita"), "Não foi possível salvar. Verifique as permissões.", "err");
+    setMsg($("msgDataUltimaVisita"), `Não foi possível confirmar a gravação (${err.code || "erro"}). ${err.message || "Verifique as regras do Firestore."}`, "err");
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = "💾 Salvar data"; }
   }
@@ -2765,6 +2782,278 @@ $("btnCancelarDataVisita")?.addEventListener("click", () => { $("modalEditarData
 $("btnSalvarDataVisita")?.addEventListener("click", salvarEdicaoDataVisita);
 $("modalEditarDataVisita")?.addEventListener("click", e => {
   if (e.target.id === "modalEditarDataVisita") e.currentTarget.style.display = "none";
+});
+
+
+/* ================= IMPORTAÇÃO EM MASSA - ÚLTIMAS VISITAS ================= */
+
+let previaImportacaoVisitas = [];
+let arquivoImportacaoVisitasAtual = "";
+
+function normalizarCabecalhoVisita(valor) {
+  return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function converterDataImportacaoVisita(valor) {
+  if (valor instanceof Date && !isNaN(valor)) {
+    const ano = valor.getFullYear(), mes = String(valor.getMonth()+1).padStart(2,"0"), dia = String(valor.getDate()).padStart(2,"0");
+    return `${ano}-${mes}-${dia}`;
+  }
+  if (typeof valor === "number" && window.XLSX?.SSF) {
+    const p = XLSX.SSF.parse_date_code(valor);
+    if (p && p.y && p.m && p.d) return `${p.y}-${String(p.m).padStart(2,"0")}-${String(p.d).padStart(2,"0")}`;
+  }
+  const s = String(valor ?? "").trim();
+  if (!s) return "";
+  let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (m) return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
+  m = s.match(/^(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})$/);
+  if (m) return `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+  return "";
+}
+
+function dataIsoValidaVisita(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return false;
+  const [a,m,d] = iso.split("-").map(Number);
+  const dt = new Date(a,m-1,d);
+  return dt.getFullYear()===a && dt.getMonth()===m-1 && dt.getDate()===d;
+}
+
+function obterCampoLinhaVisita(row, aliases) {
+  const keys = Object.keys(row);
+  const key = keys.find(k => aliases.includes(normalizarCabecalhoVisita(k)));
+  return key ? row[key] : "";
+}
+
+function normalizarTecnicoImportacao(valor) {
+  return normalizarCabecalhoVisita(valor);
+}
+
+function encontrarVinculoImportacao(cie, tecnicoTexto, vinculos) {
+  const candidatos = vinculos.filter(v => onlyDigits(v.cie) === cie);
+  if (!candidatos.length) return { erro: "CIE não encontrado na carteira de escolas." };
+  if (!tecnicoTexto) {
+    if (candidatos.length > 1) return { erro: "CIE vinculado a mais de um técnico. Preencha a coluna Técnico." };
+    return { vinculo: candidatos[0] };
+  }
+  const busca = normalizarTecnicoImportacao(tecnicoTexto);
+  const encontrados = candidatos.filter(v => {
+    const nome = normalizarTecnicoImportacao(v.tecnicoNome || nomeAnalistaVisita(v));
+    const uid = normalizarTecnicoImportacao(v.tecnicoUid);
+    return nome === busca || uid === busca || nome.includes(busca) || busca.includes(nome);
+  });
+  if (encontrados.length === 1) return { vinculo: encontrados[0] };
+  if (encontrados.length > 1) return { erro: "Mais de um vínculo corresponde ao técnico informado." };
+  return { erro: "Técnico informado não corresponde ao vínculo do CIE." };
+}
+
+async function lerArquivoImportacaoVisitas(file) {
+  if (!window.XLSX) throw new Error("Biblioteca de leitura de planilhas indisponível. Recarregue a página com internet.");
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!sheet) throw new Error("O arquivo não contém uma planilha válida.");
+  return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
+}
+
+function renderizarPreviaImportacaoVisitas() {
+  const box = $("previaImportacaoVisitas");
+  const btn = $("btnImportarVisitas");
+  if (!box) return;
+  const validos = previaImportacaoVisitas.filter(x => !x.erro);
+  const erros = previaImportacaoVisitas.filter(x => x.erro);
+  if (!previaImportacaoVisitas.length) {
+    box.hidden = true;
+    if (btn) btn.disabled = true;
+    return;
+  }
+  box.hidden = false;
+  if (btn) btn.disabled = validos.length === 0 || !isAdministrador();
+  box.innerHTML = `
+    <div class="visitasImportacaoResumo">
+      <strong>${previaImportacaoVisitas.length} linha(s) analisada(s)</strong>
+      <span class="importacaoOk">${validos.length} pronta(s)</span>
+      <span class="importacaoErro">${erros.length} com problema(s)</span>
+    </div>
+    <div class="visitasImportacaoTabelaScroll">
+      <table class="visitasImportacaoTabela">
+        <thead><tr><th>CIE</th><th>Escola</th><th>Técnico</th><th>Última visita</th><th>Resultado</th></tr></thead>
+        <tbody>${previaImportacaoVisitas.map(x => `
+          <tr class="${x.erro ? "linhaImportacaoErro" : "linhaImportacaoOk"}">
+            <td>${escapeHtml(x.cie || "—")}</td>
+            <td>${escapeHtml(x.escolaNome || "—")}</td>
+            <td>${escapeHtml(x.tecnicoNome || x.tecnicoInformado || "—")}</td>
+            <td>${escapeHtml(x.dataFormatada || "—")}</td>
+            <td>${x.erro ? `<span class="importacaoErro">${escapeHtml(x.erro)}</span>` : `<span class="importacaoOk">Pronta para atualizar</span>`}</td>
+          </tr>`).join("")}</tbody>
+      </table>
+    </div>
+    ${erros.length ? `<p class="visitasImportacaoAjuda">As linhas com erro serão ignoradas. Corrija a planilha e selecione novamente se necessário.</p>` : ""}
+  `;
+}
+
+async function prepararImportacaoVisitas(file) {
+  setMsg($("resultadoImportacaoVisitas"), "Lendo arquivo e conferindo os vínculos...", "");
+  previaImportacaoVisitas = [];
+  renderizarPreviaImportacaoVisitas();
+  try {
+    if (!file) return;
+    const rows = await lerArquivoImportacaoVisitas(file);
+    if (!rows.length) throw new Error("A planilha está vazia.");
+    const primeira = rows[0];
+    const cieKey = Object.keys(primeira).find(k => ["cie","codigocie","codigodaescola"].includes(normalizarCabecalhoVisita(k)));
+    const dataKey = Object.keys(primeira).find(k => ["ultimavisita","dataultimavisita","datavisita","ultimavisitarealizada"].includes(normalizarCabecalhoVisita(k)));
+    const tecnicoKey = Object.keys(primeira).find(k => ["tecnico","analista","responsavel","tecnicoresponsavel"].includes(normalizarCabecalhoVisita(k)));
+    if (!cieKey || !dataKey) throw new Error("Cabeçalhos obrigatórios não encontrados. Use CIE e Última visita. Técnico é recomendado.");
+    if (rows.length > 450) throw new Error("O arquivo contém mais de 450 linhas. Divida em arquivos menores para manter a importação segura.");
+
+    const vinculosSnap = await getDocsFromServer(collection(db, "escolas_tecnicos"));
+    const vinculos = vinculosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    const hojeIso = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}-${String(hoje.getDate()).padStart(2,"0")}`;
+    const chavesVistas = new Set();
+
+    previaImportacaoVisitas = rows.map((row, index) => {
+      const cie = onlyDigits(row[cieKey]);
+      const tecnicoInformado = tecnicoKey ? String(row[tecnicoKey] || "").trim() : "";
+      const data = converterDataImportacaoVisita(row[dataKey]);
+      const item = { linha: index+2, cie, tecnicoInformado, data, dataFormatada: data ? formatarDataVisita(data) : "", erro: "" };
+      if (!cie) item.erro = "CIE ausente ou inválido.";
+      else if (!data || !dataIsoValidaVisita(data)) item.erro = "Data inválida. Use DD/MM/AAAA ou AAAA-MM-DD.";
+      else if (data > hojeIso) item.erro = "Data futura não permitida.";
+      if (!item.erro) {
+        const match = encontrarVinculoImportacao(cie, tecnicoInformado, vinculos);
+        if (match.erro) item.erro = match.erro;
+        else {
+          item.vinculo = match.vinculo;
+          item.escolaNome = match.vinculo.escolaNome || cie;
+          item.tecnicoNome = match.vinculo.tecnicoNome || nomeAnalistaVisita(match.vinculo);
+          const chave = `${match.vinculo.id}`;
+          if (chavesVistas.has(chave)) item.erro = "Este vínculo aparece mais de uma vez no arquivo.";
+          else chavesVistas.add(chave);
+          item.dataAnterior = match.vinculo.ultimaVisita || "";
+        }
+      }
+      return item;
+    });
+    arquivoImportacaoVisitasAtual = file.name;
+    setMsg($("resultadoImportacaoVisitas"), `${file.name}: arquivo analisado. Confira a prévia antes de confirmar.`, "ok");
+    renderizarPreviaImportacaoVisitas();
+  } catch (err) {
+    console.error("prepararImportacaoVisitas", err);
+    setMsg($("resultadoImportacaoVisitas"), err.message || "Não foi possível ler o arquivo.", "err");
+  }
+}
+
+async function confirmarImportacaoVisitas() {
+  if (!isAdministrador()) {
+    setMsg($("resultadoImportacaoVisitas"), "Somente administradores podem importar datas em massa.", "err");
+    return;
+  }
+  const validos = previaImportacaoVisitas.filter(x => !x.erro);
+  if (!validos.length) {
+    setMsg($("resultadoImportacaoVisitas"), "Não há linhas válidas para importar.", "err");
+    return;
+  }
+  if (!confirm(`Confirma a atualização de ${validos.length} vínculo(s) de escola? As datas atuais serão substituídas pelas datas da planilha.`)) return;
+
+  const btn = $("btnImportarVisitas");
+  if (btn) { btn.disabled = true; btn.textContent = "Importando..."; }
+  try {
+    const agora = Date.now();
+    const importacaoRef = doc(collection(db, "importacoes_visitas"));
+    const itensAuditoria = validos.map(x => ({
+      cie: x.cie,
+      escolaNome: x.escolaNome,
+      tecnicoUid: x.vinculo.tecnicoUid || "",
+      tecnicoNome: x.tecnicoNome || "",
+      vinculoId: x.vinculo.id,
+      dataAnterior: x.dataAnterior || null,
+      dataNova: x.data,
+      linhaArquivo: x.linha
+    }));
+    const batch = writeBatch(db);
+    validos.forEach(x => {
+      batch.set(doc(db, "escolas_tecnicos", x.vinculo.id), {
+        ultimaVisita: x.data,
+        ultimaVisitaAtualizadaEm: agora,
+        ultimaVisitaAtualizadaPor: currentUid(),
+        origemUltimaVisita: "importacao",
+        ultimaVisitaImportacaoId: importacaoRef.id
+      }, { merge: true });
+    });
+    batch.set(importacaoRef, {
+      arquivo: arquivoImportacaoVisitasAtual,
+      quantidade: validos.length,
+      realizadoPor: currentUid(),
+      realizadoPorNome: getUserFirstName(),
+      dataCriacao: agora,
+      itens: itensAuditoria
+    });
+    await batch.commit();
+
+    // Leitura de confirmação: evita informar sucesso se os documentos não persistiram.
+    let confirmados = 0;
+    for (let i = 0; i < validos.length; i += 25) {
+      const bloco = validos.slice(i, i + 25);
+      const docs = await Promise.all(bloco.map(x => getDocFromServer(doc(db, "escolas_tecnicos", x.vinculo.id))));
+      docs.forEach((snap, j) => {
+        if (snap.exists() && snap.data().ultimaVisita === bloco[j].data) confirmados++;
+      });
+    }
+    if (confirmados !== validos.length) {
+      throw new Error(`O Firebase confirmou ${confirmados} de ${validos.length} registros. Atualize a página e confira os dados antes de repetir a importação.`);
+    }
+
+    const erros = previaImportacaoVisitas.filter(x => x.erro).length;
+    setMsg($("resultadoImportacaoVisitas"), `Importação concluída: ${confirmados} data(s) gravada(s) e confirmada(s). ${erros} linha(s) ignorada(s).`, "ok");
+    previaImportacaoVisitas = [];
+    renderizarPreviaImportacaoVisitas();
+    if ($("arquivoImportacaoVisitas")) $("arquivoImportacaoVisitas").value = "";
+    await carregarPainelVisitas();
+  } catch (err) {
+    console.error("confirmarImportacaoVisitas", err);
+    setMsg($("resultadoImportacaoVisitas"), `Falha na importação (${err.code || "erro"}): ${err.message || "verifique as permissões do Firestore."}`, "err");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Confirmar importação"; }
+    renderizarPreviaImportacaoVisitas();
+  }
+}
+
+function baixarModeloImportacaoVisitas() {
+  const linhas = [
+    ["CIE", "Técnico", "Última visita"],
+    ["123456", "Gustavo", "10/11/2026"],
+    ["123457", "Lucas", "08/11/2026"]
+  ];
+  const csv = "\uFEFF" + linhas.map(l => l.map(v => `"${String(v).replaceAll('"','""')}"`).join(";")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "modelo_importacao_ultimas_visitas.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+$("arquivoImportacaoVisitas")?.addEventListener("change", e => prepararImportacaoVisitas(e.target.files?.[0]));
+$("btnImportarVisitas")?.addEventListener("click", confirmarImportacaoVisitas);
+$("btnBaixarModeloVisitas")?.addEventListener("click", baixarModeloImportacaoVisitas);
+$("btnBaixarModeloVisitasXlsx")?.addEventListener("click", () => {
+  if (!window.XLSX) {
+    setMsg($("resultadoImportacaoVisitas"), "Biblioteca Excel indisponível. Use o modelo CSV.", "err");
+    return;
+  }
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["CIE", "Técnico", "Última visita"],
+    ["123456", "Gustavo", "10/11/2026"],
+    ["123457", "Lucas", "08/11/2026"]
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Últimas visitas");
+  XLSX.writeFile(wb, "modelo_importacao_ultimas_visitas.xlsx");
 });
 
 // Função auxiliar para carregar escolas no select
@@ -2994,16 +3283,29 @@ formAtendimento?.addEventListener('submit', async (e) => {
     
     await setDoc(escolaRef, updates, { merge: true });
 
-    const vinculosDaEscola = await getDocs(query(
+    // Qualquer atendimento registrado (presencial, remoto, telefônico ou outro)
+    // reinicia a contagem. A data oficial fica no vínculo escolas_tecnicos.
+    const vinculosDaEscola = await getDocsFromServer(query(
       collection(db, "escolas_tecnicos"),
       where("cie", "==", escolaData.cie)
     ));
-    await Promise.all(vinculosDaEscola.docs.map(v =>
-      setDoc(doc(db, "escolas_tecnicos", v.id), {
-        ultimaVisita: (v.data()?.ultimaVisita && v.data().ultimaVisita > data) ? v.data().ultimaVisita : data,
-        ultimaVisitaAtualizadaEm: Date.now()
-      }, { merge: true })
-    ));
+    const batchVisitas = writeBatch(db);
+    vinculosDaEscola.docs.forEach(v => {
+      // Preserva a data mais recente entre o registro operacional, o vínculo
+      // e o atendimento atual. Assim, uma planilha importada nunca é sobrescrita
+      // por um atendimento antigo lançado posteriormente.
+      const datasConhecidas = [v.data()?.ultimaVisita, escolaData.ultimaVisita, data]
+        .filter(d => /^\\d{4}-\\d{2}-\\d{2}$/.test(d || ""));
+      const dataEfetivaAtendimento = datasConhecidas.sort().at(-1) || data;
+      batchVisitas.set(doc(db, "escolas_tecnicos", v.id), {
+        ultimaVisita: dataEfetivaAtendimento,
+        ultimaVisitaAtualizadaEm: Date.now(),
+        ultimaVisitaAtualizadaPor: currentUid(),
+        ultimaVisitaTipoAtendimento: tipo || "outro",
+        origemUltimaVisita: "atendimento"
+      }, { merge: true });
+    });
+    if (!vinculosDaEscola.empty) await batchVisitas.commit();
     
     if (modalAtendimento) modalAtendimento.style.display = 'none';
     

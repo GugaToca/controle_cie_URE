@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261113-visitas03"/>
+<link rel="stylesheet" href="styles.css?v=20261115-importvisitas04"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
 <link rel="stylesheet" href="myboot/integracao.css">
 
@@ -728,6 +728,26 @@ Importar em massa
           <button type="button" id="btnVisitasAnalistas" class="btn" aria-pressed="false">👥 Por analista</button>
         </div>
       </div>
+    </section>
+    <section class="card visitasImportacaoCard" id="painelImportacaoVisitas">
+      <div class="visitasImportacaoHeader">
+        <div>
+          <h3>📥 Importar últimas visitas</h3>
+          <p>Atualize as datas de várias escolas de uma só vez usando Excel ou CSV.</p>
+        </div>
+        <div class="visitasModeloBotoes">
+          <button type="button" id="btnBaixarModeloVisitas" class="btn btnSecondary">⬇ Modelo CSV</button>
+          <button type="button" id="btnBaixarModeloVisitasXlsx" class="btn btnSecondary">⬇ Modelo Excel</button>
+        </div>
+      </div>
+      <div class="visitasImportacaoControles">
+        <label class="visitasArquivoLabel" for="arquivoImportacaoVisitas">Selecionar arquivo (.xlsx ou .csv)</label>
+        <input id="arquivoImportacaoVisitas" type="file" accept=".xlsx,.xls,.csv">
+        <button type="button" id="btnImportarVisitas" class="btn primary" disabled>Confirmar importação</button>
+      </div>
+      <p class="visitasImportacaoAjuda">Colunas obrigatórias: CIE e Última visita. Coluna Técnico recomendada quando uma escola estiver vinculada a mais de um analista. A importação altera somente datas, sem criar escolas ou vínculos.</p>
+      <div id="resultadoImportacaoVisitas" class="visitasImportacaoResultado" aria-live="polite"></div>
+      <div id="previaImportacaoVisitas" class="visitasImportacaoPrevia" hidden></div>
     </section>
     <div id="listaPainelVisitas" class="visitasTecnicosLista">
       <div class="visitasCarregando">Carregando escolas e visitas...</div>
@@ -1720,7 +1740,7 @@ function memVictory(){
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
-<script type="module" src="app.js?v=20261113-visitas03"></script>
+<script type="module" src="app.js?v=20261115-importvisitas04"></script>
 
 <!-- Carregamento do Meu Boot: apenas quando a página existe e o conteúdo ainda não foi carregado -->
 <script>
