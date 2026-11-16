@@ -1,4 +1,4 @@
-SEINTEC - Escolas e Visitas v21
+SEINTEC - Escolas e Visitas v23
 
 ALTERAÇÃO: RESPONSÁVEL PELA CARTEIRA x TÉCNICO QUE REALIZOU O ATENDIMENTO
 
@@ -34,3 +34,13 @@ ATUALIZAÇÃO v22 - SELETOR DE USUÁRIOS
 - O vínculo da escola continua associado ao técnico responsável pela carteira.
 - A lista usada nas abas/carteiras de técnicos permanece separada e continua excluindo administradores.
 - Cache do PWA atualizado para ure-v22.
+
+
+ATUALIZAÇÃO v23 - CORREÇÃO DO CARREGAMENTO DO SELETOR
+
+- Ao abrir o modal de última visita, o sistema consulta diretamente o Firestore (getDocsFromServer) na coleção usuarios.
+- O seletor é preenchido com todos os documentos encontrados, usando o ID do documento como UID, mesmo que o campo uid não esteja gravado no documento.
+- Enquanto consulta, o campo informa que os usuários estão sendo carregados.
+- Se a consulta falhar, o formulário apresenta uma mensagem de erro com o código retornado, em vez de exibir silenciosamente uma lista vazia.
+- Cache do PWA atualizado para ure-v23 e parâmetro do app.js alterado para evitar reaproveitamento de JavaScript antigo.
+- Regras do Firestore não foram alteradas nesta correção. A leitura em /usuarios continua exigindo usuário autenticado.

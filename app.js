@@ -2688,7 +2688,7 @@ function renderizarPainelVisitas() {
   });
 }
 
-function abrirEdicaoDataVisita(id) {
+async function abrirEdicaoDataVisita(id) {
   const item = painelVisitasDados.find(e => e.id === id);
   if (!item) return;
   vinculoDataVisitaAtual = item;
@@ -2701,18 +2701,37 @@ function abrirEdicaoDataVisita(id) {
     input.value = item.ultimaVisitaCalculada || "";
     input.max = new Date().toISOString().slice(0, 10);
   }
+
   if (tecnicoSelect) {
-    // O seletor deve listar todas as contas cadastradas em usuarios,
-    // não apenas os técnicos que possuem carteira. Administradores também podem atender.
-    const usuarios = [...listaUsuariosSistemaCache].sort((a, b) =>
-      (a.nome || a.email || "").localeCompare(b.nome || b.email || "", "pt-BR")
-    );
-    tecnicoSelect.innerHTML = '<option value="">— Selecione quem realizou —</option>' +
-      usuarios.map(u => `<option value="${escapeHtml(u.uid)}">${escapeHtml(u.nome || u.email || "Usuário")}</option>`).join("");
-    tecnicoSelect.value = item.tecnicoAtendimentoUid ||
-      (usuarios.some(u => u.uid === currentUid()) ? currentUid() : "");
+    tecnicoSelect.disabled = true;
+    tecnicoSelect.innerHTML = '<option value="">Carregando usuários cadastrados...</option>';
+    try {
+      // Busca atualizada ao abrir o modal: não depende de cache carregado no login.
+      const usuariosSnap = await getDocsFromServer(collection(db, "usuarios"));
+      listaUsuariosSistemaCache = usuariosSnap.docs.map(d => ({ ...d.data(), uid: d.id }))
+        .sort((a, b) => (a.nome || a.email || "").localeCompare(b.nome || b.email || "", "pt-BR"));
+
+      if (!listaUsuariosSistemaCache.length) {
+        tecnicoSelect.innerHTML = '<option value="">Nenhum usuário cadastrado encontrado</option>';
+      } else {
+        tecnicoSelect.innerHTML = '<option value="">— Selecione quem realizou —</option>' +
+          listaUsuariosSistemaCache.map(u =>
+            `<option value="${escapeHtml(u.uid)}">${escapeHtml(u.nome || u.email || "Usuário sem nome")}</option>`
+          ).join("");
+        tecnicoSelect.value = item.tecnicoAtendimentoUid ||
+          (listaUsuariosSistemaCache.some(u => u.uid === currentUid()) ? currentUid() : "");
+      }
+    } catch (erroUsuarios) {
+      console.error("Não foi possível carregar os usuários para o atendimento:", erroUsuarios);
+      tecnicoSelect.innerHTML = '<option value="">Erro ao carregar usuários. Verifique a conexão e as regras do Firestore.</option>';
+      setMsg($("msgDataUltimaVisita"), `Não foi possível carregar os usuários cadastrados (${erroUsuarios.code || "erro"}). Confira se as regras do Firestore publicadas permitem leitura em /usuarios para usuários autenticados.`, "err");
+    } finally {
+      tecnicoSelect.disabled = false;
+    }
   }
-  setMsg($("msgDataUltimaVisita"), "", "");
+  if (!$("msgDataUltimaVisita")?.classList.contains("err")) {
+    setMsg($("msgDataUltimaVisita"), "", "");
+  }
   if (modal) modal.style.display = "flex";
 }
 
