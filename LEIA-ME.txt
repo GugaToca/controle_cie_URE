@@ -27,3 +27,10 @@ OBSERVAÇÕES
 - Os registros antigos sem tecnicoAtendimentoUid/tecnicoAtendimentoNome continuam exibindo o técnico responsável pela carteira como identificação histórica aproximada, até que sejam atualizados manualmente.
 - A importação em massa de datas não foi alterada e não atribui automaticamente um executor.
 - A validação de JavaScript foi executada localmente. A persistência e as permissões precisam ser confirmadas no projeto Firebase real.
+
+
+ATUALIZAÇÃO v22 - SELETOR DE USUÁRIOS
+- O campo “Técnico que realizou o atendimento” carrega os nomes de todas as contas cadastradas na coleção usuarios do Firestore, incluindo administradores.
+- O vínculo da escola continua associado ao técnico responsável pela carteira.
+- A lista usada nas abas/carteiras de técnicos permanece separada e continua excluindo administradores.
+- Cache do PWA atualizado para ure-v22.

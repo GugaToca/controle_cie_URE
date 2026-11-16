@@ -1902,12 +1902,20 @@ const CORES_TECNICOS = [
 async function carregarListaTecnicosCache() {
   try {
     const snap = await getDocs(collection(db, "usuarios"));
+    // Fonte única dos nomes exibidos no seletor de quem realizou o atendimento:
+    // todos os documentos cadastrados em usuarios, incluindo administradores.
+    listaUsuariosSistemaCache = [];
     listaTecnicosCache = [];
     snap.forEach(d => {
-      const usuario = d.data();
-      if (usuario.perfil !== "administrador") listaTecnicosCache.push({ ...usuario, uid: d.id });
+      const usuario = { ...d.data(), uid: d.id };
+      listaUsuariosSistemaCache.push(usuario);
+      // A lista de técnicos/carteiras continua excluindo administradores.
+      if (usuario.perfil !== "administrador") listaTecnicosCache.push(usuario);
     });
-    listaTecnicosCache.sort((a, b) => (a.nome || a.email).localeCompare(b.nome || b.email));
+    const ordenarPorNome = (a, b) =>
+      (a.nome || a.email || "").localeCompare(b.nome || b.email || "", "pt-BR");
+    listaUsuariosSistemaCache.sort(ordenarPorNome);
+    listaTecnicosCache.sort(ordenarPorNome);
     
     // Gerar abreviações únicas
     gerarAbreviacoesTecnicos();
@@ -2033,6 +2041,7 @@ const btnCancelarEditarEscola = $("btnCancelarEditarEscola");
 
 let editandoEscolaCie = null;
 let listaTecnicosCache = [];
+let listaUsuariosSistemaCache = [];
 
 // Carregar técnicos no select
 async function carregarTecnicosSelect() {
@@ -2544,6 +2553,8 @@ function nomeAnalistaVisita(e) {
 // Quem executou o atendimento é independente do técnico dono da carteira.
 function nomeTecnicoAtendimentoVisita(e) {
   return e.tecnicoAtendimentoNome ||
+    listaUsuariosSistemaCache.find(u => u.uid === e.tecnicoAtendimentoUid)?.nome ||
+    listaUsuariosSistemaCache.find(u => u.uid === e.tecnicoAtendimentoUid)?.email ||
     listaTecnicosCache.find(t => t.uid === e.tecnicoAtendimentoUid)?.nome ||
     nomeAnalistaVisita(e);
 }
@@ -2691,13 +2702,15 @@ function abrirEdicaoDataVisita(id) {
     input.max = new Date().toISOString().slice(0, 10);
   }
   if (tecnicoSelect) {
-    const tecnicos = [...listaTecnicosCache].sort((a, b) =>
+    // O seletor deve listar todas as contas cadastradas em usuarios,
+    // não apenas os técnicos que possuem carteira. Administradores também podem atender.
+    const usuarios = [...listaUsuariosSistemaCache].sort((a, b) =>
       (a.nome || a.email || "").localeCompare(b.nome || b.email || "", "pt-BR")
     );
     tecnicoSelect.innerHTML = '<option value="">— Selecione quem realizou —</option>' +
-      tecnicos.map(t => `<option value="${escapeHtml(t.uid)}">${escapeHtml(t.nome || t.email || "Técnico")}</option>`).join("");
+      usuarios.map(u => `<option value="${escapeHtml(u.uid)}">${escapeHtml(u.nome || u.email || "Usuário")}</option>`).join("");
     tecnicoSelect.value = item.tecnicoAtendimentoUid ||
-      (tecnicos.some(t => t.uid === currentUid()) ? currentUid() : "");
+      (usuarios.some(u => u.uid === currentUid()) ? currentUid() : "");
   }
   setMsg($("msgDataUltimaVisita"), "", "");
   if (modal) modal.style.display = "flex";
@@ -2708,7 +2721,7 @@ async function salvarEdicaoDataVisita() {
   const input = $("dataUltimaVisitaPainel");
   const data = input?.value || "";
   const tecnicoUid = $("tecnicoAtendimentoVisitaPainel")?.value || "";
-  const tecnicoSelecionado = listaTecnicosCache.find(t => t.uid === tecnicoUid);
+  const tecnicoSelecionado = listaUsuariosSistemaCache.find(u => u.uid === tecnicoUid);
   const hoje = new Date().toISOString().slice(0, 10);
   if (!data) {
     setMsg($("msgDataUltimaVisita"), "Informe a data da última visita.", "err");
@@ -2732,7 +2745,7 @@ async function salvarEdicaoDataVisita() {
       ultimaVisitaAtualizadaEm: Date.now(),
       ultimaVisitaAtualizadaPor: currentUid(),
       tecnicoAtendimentoUid: tecnicoUid,
-      tecnicoAtendimentoNome: tecnicoSelecionado.nome || tecnicoSelecionado.email || "Técnico",
+      tecnicoAtendimentoNome: tecnicoSelecionado.nome || tecnicoSelecionado.email || "Usuário",
       origemUltimaVisita: "edicao_manual"
     }, { merge: true });
 
@@ -2749,7 +2762,7 @@ async function salvarEdicaoDataVisita() {
         await setDoc(doc(db, "tecnicos_escolas", vinculoDataVisitaAtual.registroOperacionalId), {
           ultimaVisita: data,
           tecnicoAtendimentoUid: tecnicoUid,
-          tecnicoAtendimentoNome: tecnicoSelecionado.nome || tecnicoSelecionado.email || "Técnico",
+          tecnicoAtendimentoNome: tecnicoSelecionado.nome || tecnicoSelecionado.email || "Usuário",
           dataAtualizacao: Date.now()
         }, { merge: true });
       } catch (syncError) {
