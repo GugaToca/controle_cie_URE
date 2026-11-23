@@ -1,0 +1,17 @@
+{
+  "name": "controle-cie-functions",
+  "description": "Cloud Functions administrativas do Controle CIE URE",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "echo 'Lint n\u00e3o configurado'"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0"
+  }
+}

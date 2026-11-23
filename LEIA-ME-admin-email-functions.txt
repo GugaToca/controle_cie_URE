@@ -1,0 +1,16 @@
+GERENCIAMENTO DE E-MAIL DE USUÁRIOS
+
+A interface fica dentro do sistema Controle CIE URE. A alteração real do e-mail é realizada por uma Cloud Function Firebase Callable, sem backend adicional no GugaServer.
+
+CONFIGURAÇÃO INICIAL (uma única vez):
+1. Instale/tenha Firebase CLI e autentique: firebase login
+2. Na raiz do projeto, confirme o projeto: firebase use cie-escolas
+3. Instale dependências da função: cd functions && npm install && cd ..
+4. Publique a função: firebase deploy --only functions:alterarEmailUsuario
+5. Publique as regras: firebase deploy --only firestore:rules
+
+ATUALIZAÇÕES DO FRONTEND:
+Substitua no GitHub, faça git pull no GugaServer e publique como de costume.
+
+SEGURANÇA:
+A função valida o token autenticado e consulta o perfil administrador no Firestore. Ela atualiza o Firebase Authentication e o documento usuarios/{uid}, preservando o UID e os dados vinculados. Registra auditoria em auditoria_usuarios.
