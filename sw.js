@@ -1,7 +1,7 @@
 /* ================= SERVICE WORKER - URE SJR Preto ================= */
-/* Para forcar atualizacao do cache, incremente a versao: ure-v24, ure-v3... */
+/* Para forcar atualizacao do cache, incremente a versao: ure-v28, ure-v28... */
 
-const CACHE_NAME = 'ure-v23';
+const CACHE_NAME = 'ure-v28';
 
 const ASSETS = [
   '.',

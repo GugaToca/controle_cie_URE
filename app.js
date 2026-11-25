@@ -857,6 +857,7 @@ tabs.forEach(tab=>{
 
 });
 
+
 /* ================= MENU PRINCIPAL (Sistema / Historico) ================= */
 
 document.querySelectorAll(".mainTab").forEach(tab=>{

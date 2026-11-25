@@ -2850,3 +2850,196 @@ body.notificacaoModalOpen { overflow:hidden; }
 }
 
 #page-escolas-visitas .visitasModeloBotoes{display:flex;gap:7px;flex-wrap:wrap}
+
+
+/* ==========================================================
+   CONTROLE CIE URE - REDESIGN ESTRUTURAL 2026
+   Camada visual. Mantém IDs e classes usados pela aplicação.
+   ========================================================== */
+:root {
+  --bg:#f3f6fb; --card:#fff; --text:#17243a; --text-secondary:#66758c;
+  --border:#e2e9f3; --border-soft:#edf1f7;
+  --primary:#245fe5; --primary-hover:#174bc1; --primary-light:#edf3ff;
+  --topbar:#10213d; --secondary:#f0f4fa; --secondary-hover:#e5ecf6;
+  --radius-sm:11px; --radius-md:17px; --radius-lg:22px;
+  --shadow-sm:0 2px 10px rgba(22,43,78,.045);
+  --shadow-md:0 8px 24px rgba(22,43,78,.075);
+  --shadow-lg:0 18px 48px rgba(22,43,78,.13);
+}
+body.dark {
+  --bg:#0b1424; --card:#111e32; --text:#e8eef8; --text-secondary:#9aabc2;
+  --border:#263750; --border-soft:#1d2d45; --primary:#76a5ff;
+  --primary-hover:#9bbcff; --primary-light:#1a3154;
+  --secondary:#1a2a42; --secondary-hover:#243853; --topbar:#081222;
+}
+html { scroll-padding-top: calc(var(--topbar-h) + 16px); }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  line-height:1.55;
+}
+body.mobileNavLock { overflow:hidden; }
+.topbar {
+  position:sticky; top:0; z-index:120; height:68px;
+  background:var(--topbar); border:0;
+  box-shadow:0 5px 22px rgba(7,19,39,.16);
+}
+.topbar .headerFlex { height:68px; max-width:none; padding:0 24px; gap:14px; }
+.logoMascot { height:42px; border-radius:12px; }
+.logoTitle { font-size:15px; font-weight:750; letter-spacing:.015em; }
+.headerBtns { gap:9px; }
+.userDisplay { padding:8px 13px; border:1px solid rgba(255,255,255,.14); border-radius:999px; background:rgba(255,255,255,.08); }
+.btn {
+  min-height:40px; padding:10px 16px; border-radius:11px;
+  font-weight:650; letter-spacing:.005em;
+}
+.btn.primary { box-shadow:0 5px 14px rgba(36,95,229,.2); }
+.btn:hover { transform:translateY(-1px); }
+.card {
+  padding:23px; border:1px solid var(--border); border-radius:18px;
+  background:var(--card); box-shadow:var(--shadow-sm);
+}
+.cardElevated, .cardElevated:hover { box-shadow:var(--shadow-sm); }
+.wrap { max-width:1480px; padding:24px 28px; }
+.pageTitle { font-size:clamp(22px,2vw,29px); font-weight:800; letter-spacing:-.035em; margin-bottom:22px; }
+.sectionTitle,.sectionSubtitle { font-size:16px; font-weight:750; }
+input,select,textarea {
+  min-height:44px; border:1px solid var(--border); border-radius:11px;
+  background:var(--card); color:var(--text);
+}
+input:focus,select:focus,textarea:focus { border-color:var(--primary); box-shadow:0 0 0 4px var(--primary-glow); }
+.grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)); gap:18px; }
+.tableWrap { border:1px solid var(--border); border-radius:14px; overflow:auto; }
+.modernTable { border-collapse:separate; border-spacing:0; }
+.modernTable th { padding:14px 16px; background:var(--table-head); font-size:11px; letter-spacing:.07em; text-transform:uppercase; }
+.modernTable td { padding:14px 16px; border-bottom:1px solid var(--border-soft); }
+.modernTable tbody tr:hover { background:var(--table-hover); }
+.searchCardCompact {
+  width:min(100%,980px); margin:12px auto 22px; padding:28px;
+  border-radius:22px; box-shadow:var(--shadow-md);
+}
+.searchCompactHeader { margin-bottom:16px; }
+.sectionTitleCompact { font-size:20px; font-weight:800; letter-spacing:-.025em; }
+.tabsCompact { gap:8px; margin-bottom:14px; }
+.tabsCompact .tab { min-height:42px; border-radius:10px; padding:9px 17px; }
+.searchCompactInput { display:flex; gap:10px; }
+.searchCompactInput input { min-height:56px; font-size:17px; padding:14px 17px; }
+.searchCompactInput .btn { min-width:58px; min-height:56px; justify-content:center; }
+.listHeader { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:16px; }
+.listHeader .sectionTitle { margin-bottom:4px; font-size:18px; }
+.schoolCount { color:var(--text-secondary); font-size:13px; }
+.actions { gap:9px; }
+.form .row { gap:14px; }
+.formGrid { grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:14px; }
+
+/* Header e menu responsivo */
+.mobileMenuToggle {
+  display:none; width:44px; height:44px; flex:0 0 44px;
+  border:1px solid rgba(255,255,255,.18); border-radius:12px;
+  background:rgba(255,255,255,.1); cursor:pointer;
+  align-items:center; justify-content:center; flex-direction:column; gap:5px;
+}
+.mobileMenuToggle span { width:19px; height:2px; border-radius:3px; background:#fff; transition:.2s; }
+.mobileMenuToggle[aria-expanded="true"] span:first-child { transform:translateY(7px) rotate(45deg); }
+.mobileMenuToggle[aria-expanded="true"] span:nth-child(2) { opacity:0; }
+.mobileMenuToggle[aria-expanded="true"] span:last-child { transform:translateY(-7px) rotate(-45deg); }
+.mobileNavHeader,.mobileNavCaption { display:none; }
+.mobileNavBackdrop { display:none; }
+
+/* Desktop: navegação lateral e área de trabalho */
+@media (min-width:769px) {
+  #mainNavigation.mainTabs {
+    position:fixed; z-index:100; top:68px; bottom:0; left:0;
+    width:258px; height:auto; max-height:none; margin:0; padding:20px 14px 28px;
+    display:flex; flex-direction:column; align-items:stretch; gap:6px;
+    overflow-y:auto; overflow-x:hidden; background:var(--card);
+    border:0; border-right:1px solid var(--border); border-radius:0;
+    box-shadow:5px 0 24px rgba(18,39,74,.035);
+  }
+  #mainNavigation .mainTab {
+    display:flex; align-items:center; justify-content:flex-start;
+    width:100%; min-height:48px; height:auto; flex:0 0 auto;
+    padding:11px 13px; margin:0; border:1px solid transparent;
+    border-radius:11px; background:transparent; color:var(--text-secondary);
+    text-align:left; font-size:13.5px; font-weight:680;
+  }
+  #mainNavigation .mainTab:hover { background:var(--bg); color:var(--text); }
+  #mainNavigation .mainTab.active {
+    color:var(--primary); background:var(--primary-light);
+    border-color:rgba(36,95,229,.12); box-shadow:inset 3px 0 var(--primary);
+  }
+  #mainNavigation .mainTab .tabIcon { width:28px; margin-right:8px; font-size:17px; text-align:center; }
+  #appScreen > #avisosEquipe,
+  #appScreen > [id^="page-"] { margin-left:258px; }
+  #appScreen > #avisosEquipe { max-width:none; padding:0 28px; }
+  #appScreen > [id^="page-"] > .wrap { max-width:none; padding:28px 32px; }
+}
+
+/* Mobile: menu modal de tela inteira e conteúdo em coluna */
+@media (max-width:768px) {
+  .topbar { height:62px; }
+  .topbar .headerFlex { height:62px; padding:0 12px; gap:10px; }
+  .mobileMenuToggle { display:flex; }
+  .logoMascot { height:34px; }
+  .logoTitle { font-size:13px; flex:1; }
+  .headerBtns { gap:6px; }
+  .userDisplay { display:none; }
+  .headerBtns .btn { min-height:38px; padding:8px 11px; }
+  .wrap { width:100%; padding:15px 12px; }
+  .card { padding:17px; border-radius:15px; }
+  .pageTitle { font-size:21px; margin-bottom:16px; }
+  .grid { grid-template-columns:minmax(0,1fr); gap:13px; }
+  .form .row { flex-direction:column; gap:10px; }
+  .formGrid { grid-template-columns:minmax(0,1fr); }
+  .searchCardCompact { width:100%; margin:8px 0 14px; padding:19px 16px; }
+  .sectionTitleCompact { font-size:18px; }
+  .searchCompactInput { display:grid; grid-template-columns:minmax(0,1fr) 54px; gap:8px; }
+  .searchCompactInput input { min-width:0; min-height:52px; font-size:16px; }
+  .searchCompactInput .btn { min-width:54px; min-height:52px; }
+  .listHeader { align-items:flex-start; flex-wrap:wrap; }
+  .listHeader > button { width:100%; justify-content:center; }
+  .modernTable { min-width:650px; }
+  .actions .btn { min-height:43px; }
+  #mainNavigation.mainTabs {
+    position:fixed; inset:0; z-index:300; display:flex;
+    flex-direction:column; align-items:stretch; gap:7px;
+    width:100%; height:100vh; height:100dvh; max-height:none;
+    margin:0; padding:calc(16px + env(safe-area-inset-top)) 18px calc(22px + env(safe-area-inset-bottom));
+    overflow-y:auto; overscroll-behavior:contain;
+    background:var(--bg); border:0; border-radius:0;
+    transform:translateX(-102%); visibility:hidden;
+    transition:transform .24s ease, visibility .24s ease;
+    box-shadow:none;
+  }
+  #mainNavigation.mainTabs.mobileNavOpen { transform:translateX(0); visibility:visible; }
+  .mobileNavHeader { display:flex; align-items:center; justify-content:space-between; padding:8px 2px 20px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+  .mobileNavBrand { display:flex; align-items:center; gap:12px; }
+  .mobileNavMark { display:grid; place-items:center; width:46px; height:46px; border-radius:14px; background:var(--primary); color:white; font-weight:900; letter-spacing:.04em; }
+  .mobileNavBrand strong { display:block; font-size:17px; color:var(--text); }
+  .mobileNavBrand small { display:block; color:var(--text-secondary); font-size:12px; }
+  .mobileMenuClose { width:44px; height:44px; border:1px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); font-size:20px; }
+  .mobileNavCaption { display:block; padding:8px 10px 5px; color:var(--text-secondary); font-size:10px; font-weight:800; letter-spacing:.12em; }
+  #mainNavigation .mainTab {
+    display:flex; align-items:center; justify-content:flex-start;
+    width:100%; min-height:57px; height:auto; flex:0 0 auto;
+    padding:13px 15px; border:1px solid var(--border);
+    border-radius:13px; background:var(--card); color:var(--text);
+    text-align:left; font-size:15px; font-weight:680;
+  }
+  #mainNavigation .mainTab.active { color:var(--primary); background:var(--primary-light); border-color:rgba(36,95,229,.2); }
+  #mainNavigation .mainTab .tabIcon { width:30px; margin-right:10px; font-size:19px; text-align:center; }
+  .mobileNavBackdrop.visible { display:block; position:fixed; inset:0; z-index:290; background:rgba(5,14,29,.55); backdrop-filter:blur(3px); }
+  .avisosEquipe { margin:10px 12px 0; padding:0; }
+}
+@media (max-width:420px) {
+  .topbar .headerFlex { padding:0 9px; }
+  .logoTitle { font-size:11.5px; }
+  .logoMascot { height:29px; }
+  .headerBtns .btn { font-size:12px; padding:7px 9px; }
+  .wrap { padding:12px 10px; }
+  .card { padding:14px; }
+  .searchCardCompact { padding:16px 13px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; }
+}
