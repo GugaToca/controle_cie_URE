@@ -28,7 +28,6 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
 
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDaFK0vEACoCETtl-_SbUB5_47RPd7qKoU",
@@ -46,8 +45,6 @@ const db = initializeFirestore(app, {
 });
 
 const auth = getAuth(app);
-const functions = getFunctions(app, "southamerica-east1");
-const alterarEmailUsuarioCallable = httpsCallable(functions, "alterarEmailUsuario");
 
 let perfilUsuarioAtual = null;
 let usuarioAtualDoc = null;
@@ -1223,7 +1220,6 @@ async function carregarPerfilUsuario(user){
     if (isAdministrador()) {
       await carregarAdminTecnicos();
       await carregarHistoricoRemanejamentos();
-      await carregarUsuariosAdmin();
     }
   }catch(e){
     console.error("carregarPerfilUsuario", e);
@@ -4441,87 +4437,3 @@ function baixarConsolidadoPdf(){
 }
 
 iniciarUploadConsolidado();
-
-
-
-/* ================= GERENCIAMENTO DE USUÁRIOS ================= */
-const adminUsuariosLista = document.getElementById("adminUsuariosLista");
-const adminUsuariosBusca = document.getElementById("adminUsuariosBusca");
-const btnAtualizarUsuariosAdmin = document.getElementById("btnAtualizarUsuariosAdmin");
-const adminUsuariosMsg = document.getElementById("adminUsuariosMsg");
-let adminUsuariosCache = [];
-
-function renderizarUsuariosAdmin(filtro = "") {
-  if (!adminUsuariosLista) return;
-  const termo = filtro.trim().toLocaleLowerCase("pt-BR");
-  const lista = adminUsuariosCache.filter(u =>
-    [u.nome, u.email, u.uid].some(v => String(v || "").toLocaleLowerCase("pt-BR").includes(termo))
-  );
-  if (!lista.length) {
-    adminUsuariosLista.innerHTML = '<div class="adminEmptyState">Nenhum usuário encontrado.</div>';
-    return;
-  }
-  adminUsuariosLista.innerHTML = lista.map(u => `
-    <div class="adminUsuarioItem">
-      <div class="adminUsuarioInfo">
-        <strong>${escapeHtml(u.nome || "Nome não informado")}</strong>
-        <span>${escapeHtml(u.email || "E-mail não informado")}</span>
-        <small>${escapeHtml(u.perfil || "técnico")} · UID: ${escapeHtml(u.uid)}</small>
-      </div>
-      <button class="btn btnSecondary btnSmall" data-admin-alterar-email="${escapeHtml(u.uid)}">✏️ Alterar e-mail</button>
-    </div>
-  `).join("");
-  adminUsuariosLista.querySelectorAll("[data-admin-alterar-email]").forEach(btn => {
-    btn.addEventListener("click", () => iniciarAlteracaoEmailUsuario(btn.dataset.adminAlterarEmail));
-  });
-}
-
-async function carregarUsuariosAdmin() {
-  if (!adminUsuariosLista) return;
-  if (!isAdministrador()) {
-    adminUsuariosLista.innerHTML = '<div class="adminEmptyState">Acesso restrito ao administrador.</div>';
-    return;
-  }
-  adminUsuariosLista.innerHTML = '<div class="adminEmptyState">Carregando usuários...</div>';
-  try {
-    const snap = await getDocsFromServer(collection(db, "usuarios"));
-    adminUsuariosCache = snap.docs.map(d => ({ ...d.data(), uid: d.id }))
-      .sort((a,b) => (a.nome || a.email || "").localeCompare(b.nome || b.email || "", "pt-BR"));
-    renderizarUsuariosAdmin(adminUsuariosBusca?.value || "");
-    setMsg(adminUsuariosMsg, `${adminUsuariosCache.length} usuário(s) carregado(s).`, "ok");
-  } catch (e) {
-    console.error("carregarUsuariosAdmin", e);
-    adminUsuariosLista.innerHTML = '<div class="adminEmptyState">Não foi possível carregar os usuários.</div>';
-    setMsg(adminUsuariosMsg, e.message || "Erro ao carregar usuários.", "err");
-  }
-}
-
-async function iniciarAlteracaoEmailUsuario(uid) {
-  const usuario = adminUsuariosCache.find(u => u.uid === uid);
-  if (!usuario || !isAdministrador()) return;
-  const novoEmail = prompt(`Alterar e-mail de ${usuario.nome || usuario.email}\n\nE-mail atual: ${usuario.email || "não informado"}\n\nDigite o novo e-mail:`);
-  if (novoEmail === null) return;
-  const email = novoEmail.trim().toLowerCase();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    alert("Informe um e-mail válido.");
-    return;
-  }
-  if (email === String(usuario.email || "").toLowerCase()) {
-    alert("O novo e-mail é igual ao e-mail atual.");
-    return;
-  }
-  if (!confirm(`Confirma a alteração do e-mail?\n\nUsuário: ${usuario.nome || usuario.uid}\nAtual: ${usuario.email}\nNovo: ${email}\n\nUID, senha e dados vinculados serão preservados.`)) return;
-  try {
-    setMsg(adminUsuariosMsg, "Alterando e-mail...", "info");
-    const result = await alterarEmailUsuarioCallable({ uid, novoEmail: email });
-    setMsg(adminUsuariosMsg, result.data?.message || "E-mail alterado com sucesso.", "ok");
-    await carregarUsuariosAdmin();
-  } catch (e) {
-    console.error("alterarEmailUsuario", e);
-    setMsg(adminUsuariosMsg, e.message || "Não foi possível alterar o e-mail.", "err");
-    alert(e.message || "Não foi possível alterar o e-mail.");
-  }
-}
-
-btnAtualizarUsuariosAdmin?.addEventListener("click", carregarUsuariosAdmin);
-adminUsuariosBusca?.addEventListener("input", () => renderizarUsuariosAdmin(adminUsuariosBusca.value));

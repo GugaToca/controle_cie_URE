@@ -2850,15 +2850,3 @@ body.notificacaoModalOpen { overflow:hidden; }
 }
 
 #page-escolas-visitas .visitasModeloBotoes{display:flex;gap:7px;flex-wrap:wrap}
-
-
-/* Gerenciamento administrativo de usuários */
-.adminUsuariosToolbar { margin: 14px 0; }
-.adminUsuariosToolbar input { width: 100%; max-width: 560px; }
-.adminUsuariosLista { display: grid; gap: 10px; }
-.adminUsuarioItem { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 15px; border: 1px solid var(--border, #e5e7eb); border-radius: 12px; background: var(--surface, #fff); }
-.adminUsuarioInfo { min-width: 0; display: grid; gap: 3px; }
-.adminUsuarioInfo strong { overflow-wrap: anywhere; }
-.adminUsuarioInfo span { color: var(--text-muted, #64748b); overflow-wrap: anywhere; }
-.adminUsuarioInfo small { color: var(--text-muted, #94a3b8); font-size: 11px; overflow-wrap: anywhere; }
-@media (max-width: 600px) { .adminUsuarioItem { align-items: flex-start; flex-direction: column; } .adminUsuarioItem button { width: 100%; } }
